@@ -31,20 +31,12 @@ import {
   type ComponentMap,
   type ComponentRecord,
 } from "../state/components";
+import { selectionChromeMetrics } from "./selection-chrome";
 import styles from "./handles.module.css";
 
 const SELECTION_STROKE = "#F7FE62";
-/**
- * Volt is the selection accent, but Volt is also a garment colorway, so every
- * accent stroke sits on a dark underlay. That keeps the frame readable on the
- * Volt and Moss garments without giving selection a second color.
- */
-const SELECTION_UNDERLAY = "rgba(10, 10, 10, 0.78)";
 const NODE_FILL = "#0A0A0A";
 const DELETE_GLYPH = "#FFFFFF";
-const NODE_SIZE = 22;
-const ROTATE_OFFSET = 52;
-const SELECTION_DASH = "16 12";
 
 let gestureCounter = 0;
 
@@ -56,6 +48,7 @@ export type HandlesProps = {
   onDelete: (layerId: string) => void;
   onSelect: (layerId: string) => void;
   selectedLayerId: string | null;
+  zoom: number;
 };
 
 export function Handles({
@@ -66,6 +59,7 @@ export function Handles({
   onDelete,
   onSelect,
   selectedLayerId,
+  zoom,
 }: HandlesProps): React.JSX.Element {
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
   const gestureRef = React.useRef<Gesture | null>(null);
@@ -147,13 +141,14 @@ export function Handles({
   const centerY = selected?.centerY ?? 0;
   const halfWidth = (selectionBox?.width ?? 0) / 2;
   const halfHeight = (selectionBox?.height ?? 0) / 2;
+  const chrome = selectionChromeMetrics(zoom);
 
-  const rotateLocalY = -halfHeight - ROTATE_OFFSET;
+  const rotateLocalY = -halfHeight - chrome.rotateOffset;
   const rotateX = centerX - rotateLocalY * sin;
   const rotateY = centerY + rotateLocalY * cos;
 
-  const deleteLocalX = halfWidth + NODE_SIZE * 1.3;
-  const deleteLocalY = -halfHeight - NODE_SIZE * 1.3;
+  const deleteLocalX = halfWidth + chrome.deleteOffset;
+  const deleteLocalY = -halfHeight - chrome.deleteOffset;
   const deleteX = centerX + deleteLocalX * cos - deleteLocalY * sin;
   const deleteY = centerY + deleteLocalX * sin + deleteLocalY * cos;
   const topEdge =
@@ -179,34 +174,18 @@ export function Handles({
         {selected && topEdge ? (
           <g>
             <polygon
-              fill="none"
-              points={corners
-                .map((corner) => `${corner.x},${corner.y}`)
-                .join(" ")}
-              stroke={SELECTION_UNDERLAY}
-              strokeDasharray={SELECTION_DASH}
-              strokeWidth={5}
-            />
-            <line
-              stroke={SELECTION_UNDERLAY}
-              strokeWidth={5}
-              x1={topEdge.x}
-              x2={rotateX}
-              y1={topEdge.y}
-              y2={rotateY}
-            />
-            <polygon
+              data-merch-selection-frame=""
               fill="none"
               points={corners
                 .map((corner) => `${corner.x},${corner.y}`)
                 .join(" ")}
               stroke={SELECTION_STROKE}
-              strokeDasharray={SELECTION_DASH}
-              strokeWidth={2}
+              strokeDasharray={chrome.dash}
+              strokeWidth={chrome.strokeWidth}
             />
             <line
               stroke={SELECTION_STROKE}
-              strokeWidth={2}
+              strokeWidth={chrome.strokeWidth}
               x1={topEdge.x}
               x2={rotateX}
               y1={topEdge.y}
@@ -214,50 +193,57 @@ export function Handles({
             />
             {corners.map((corner, index) => (
               <rect
+                data-merch-selection-anchor=""
                 fill={NODE_FILL}
-                height={NODE_SIZE}
+                height={chrome.nodeSize}
                 key={`resize-${index}`}
                 stroke={SELECTION_STROKE}
-                strokeWidth={2}
-                width={NODE_SIZE}
-                x={corner.x - NODE_SIZE / 2}
-                y={corner.y - NODE_SIZE / 2}
+                strokeWidth={chrome.strokeWidth}
+                width={chrome.nodeSize}
+                x={corner.x - chrome.nodeSize / 2}
+                y={corner.y - chrome.nodeSize / 2}
               />
             ))}
             <rect
+              data-merch-selection-anchor=""
               fill={NODE_FILL}
-              height={NODE_SIZE}
+              height={chrome.nodeSize}
               stroke={SELECTION_STROKE}
-              strokeWidth={2}
-              width={NODE_SIZE}
-              x={rotateX - NODE_SIZE / 2}
-              y={rotateY - NODE_SIZE / 2}
+              strokeWidth={chrome.strokeWidth}
+              width={chrome.nodeSize}
+              x={rotateX - chrome.nodeSize / 2}
+              y={rotateY - chrome.nodeSize / 2}
             />
             <g>
-                <rect
-                  fill={NODE_FILL}
-                  height={NODE_SIZE}
-                  stroke={SELECTION_STROKE}
-                  strokeWidth={2}
-                  width={NODE_SIZE}
-                  x={deleteX - NODE_SIZE / 2}
-                  y={deleteY - NODE_SIZE / 2}
+              <rect
+                data-merch-selection-anchor=""
+                fill={NODE_FILL}
+                height={chrome.nodeSize}
+                stroke={SELECTION_STROKE}
+                strokeWidth={chrome.strokeWidth}
+                width={chrome.nodeSize}
+                x={deleteX - chrome.nodeSize / 2}
+                y={deleteY - chrome.nodeSize / 2}
+              />
+              <g
+                stroke={DELETE_GLYPH}
+                strokeLinecap="round"
+                strokeWidth={chrome.strokeWidth}
+              >
+                <line
+                  x1={deleteX - chrome.nodeSize / 5}
+                  x2={deleteX + chrome.nodeSize / 5}
+                  y1={deleteY - chrome.nodeSize / 5}
+                  y2={deleteY + chrome.nodeSize / 5}
                 />
-                <g stroke={DELETE_GLYPH} strokeLinecap="round" strokeWidth={2.4}>
-                  <line
-                    x1={deleteX - NODE_SIZE / 5}
-                    x2={deleteX + NODE_SIZE / 5}
-                    y1={deleteY - NODE_SIZE / 5}
-                    y2={deleteY + NODE_SIZE / 5}
-                  />
-                  <line
-                    x1={deleteX + NODE_SIZE / 5}
-                    x2={deleteX - NODE_SIZE / 5}
-                    y1={deleteY - NODE_SIZE / 5}
-                    y2={deleteY + NODE_SIZE / 5}
-                  />
-                </g>
+                <line
+                  x1={deleteX + chrome.nodeSize / 5}
+                  x2={deleteX - chrome.nodeSize / 5}
+                  y1={deleteY - chrome.nodeSize / 5}
+                  y2={deleteY + chrome.nodeSize / 5}
+                />
               </g>
+            </g>
           </g>
         ) : null}
       </svg>
@@ -312,10 +298,10 @@ export function Handles({
               data-merch-interactive=""
               key={`resize-${index}`}
               style={{
-                height: NODE_SIZE,
-                left: corner.x - NODE_SIZE / 2,
-                top: corner.y - NODE_SIZE / 2,
-                width: NODE_SIZE,
+                height: chrome.hitTargetSize,
+                left: corner.x - chrome.hitTargetSize / 2,
+                top: corner.y - chrome.hitTargetSize / 2,
+                width: chrome.hitTargetSize,
               }}
             >
               <Button
@@ -342,10 +328,10 @@ export function Handles({
           className={styles.handle}
           data-merch-interactive=""
           style={{
-            height: NODE_SIZE,
-            left: rotateX - NODE_SIZE / 2,
-            top: rotateY - NODE_SIZE / 2,
-            width: NODE_SIZE,
+            height: chrome.hitTargetSize,
+            left: rotateX - chrome.hitTargetSize / 2,
+            top: rotateY - chrome.hitTargetSize / 2,
+            width: chrome.hitTargetSize,
           }}
         >
           <Button
@@ -374,10 +360,10 @@ export function Handles({
           className={styles.handle}
           data-merch-interactive=""
           style={{
-            height: NODE_SIZE,
-            left: deleteX - NODE_SIZE / 2,
-            top: deleteY - NODE_SIZE / 2,
-            width: NODE_SIZE,
+            height: chrome.hitTargetSize,
+            left: deleteX - chrome.hitTargetSize / 2,
+            top: deleteY - chrome.hitTargetSize / 2,
+            width: chrome.hitTargetSize,
           }}
         >
           <Button

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { isComponentKind } from "../state/components";
+import { selectionChromeMetrics } from "./selection-chrome";
 import {
   shouldDeselectOnKeyDown,
   shouldDeselectOnPointerDown,
@@ -51,6 +52,22 @@ function keyEvent(
 }
 
 describe("canvas selection chrome", () => {
+  it("keeps smaller selection chrome at a constant screen size across zoom", () => {
+    const zoomLevels = [50, 100, 200];
+
+    for (const zoom of zoomLevels) {
+      const scale = zoom / 100;
+      const metrics = selectionChromeMetrics(zoom);
+
+      expect(metrics.nodeSize * scale).toBe(12);
+      expect(metrics.hitTargetSize * scale).toBe(24);
+      expect(metrics.strokeWidth * scale).toBe(1.5);
+      expect(
+        metrics.dash.split(" ").map((value) => Number(value) * scale),
+      ).toEqual([8, 6]);
+    }
+  });
+
   it("clears canvas selection chrome with Enter or an empty-canvas click", () => {
     const canvas = new Node({ "data-slot": "toolcraft-runtime-canvas" });
     const empty = new Node({}, canvas);

@@ -71,6 +71,7 @@ export function DesignCanvas(): React.JSX.Element | null {
   const selectedLayerId = useToolcraftSelector(
     (state) => state.selectedLayerId,
   );
+  const canvasZoom = useToolcraftSelector((state) => state.canvas.zoom);
   const mediaAssets = useToolcraftSelector((state) => state.mediaAssets);
   const facesReady = useProductFaces();
 
@@ -257,6 +258,7 @@ export function DesignCanvas(): React.JSX.Element | null {
         onDelete={handleDelete}
         onSelect={handleSelect}
         selectedLayerId={editingLayerId}
+        zoom={canvasZoom}
       />
     </div>
   );

@@ -4,7 +4,7 @@
 
 Mode: product
 
-Active change: canvas-selection-commit
+Active change: canvas-selection-style
 
 This is a merch design studio. Later entries stay compact. Detailed requests and results belong in `docs/agent-journal/changes`; text command attempts live in `.toolcraft/journal/runs`.
 
@@ -47,6 +47,19 @@ This is a merch design studio. Later entries stay compact. Detailed requests and
 - User-visible result: selection chrome commits on Enter or an empty-canvas click. The component stays on the garment; the frame, nodes, and Selected panel hide until the artwork is clicked again.
 - Verification: unit test `clears canvas selection chrome with Enter or an empty-canvas click`; live canvas check of select, Enter, empty-canvas click, and re-select.
 - Risks: runtime `layers.select` cannot clear `selectedLayerId`, so the layers list may still highlight the last layer while the canvas looks unselected. Dropdown Enter is ignored so Face/Ink menus still confirm.
+
+### Canvas selection style
+
+- Entry type: focused
+- Change ID: canvas-selection-style
+- Request: remove the black stroke behind the dashed selection border, reduce the anchor size, and keep selection chrome a constant screen size while canvas zoom changes.
+- Changed owner: `src/app/canvas/design-canvas.tsx`, `src/app/canvas/handles.tsx`, `src/app/canvas/selection-chrome.ts`, `src/app/canvas/selection.test.ts`
+- User-visible result: the selection frame now uses one Volt dashed stroke with no dark underlay. Visible anchors are 12 screen pixels and all selection chrome dimensions remain constant through canvas zoom; 24-pixel invisible targets preserve handle usability.
+- Verification tier: Tier 1
+- Reason: localized product-owned canvas overlay styling and zoom geometry; product rendering, export, controls, and runtime ownership are unchanged.
+- Run: focused selection metric unit test passed (2 tests); typecheck passed; manual in-app browser comparison at 64% and 104% measured 12-pixel anchors at both zoom levels, one `#F7FE62` polygon, and no underlay polygon. `npm run test:feature -- handle.resize` was attempted but its protected dependency-authority preflight failed before app startup while inspecting ordinary package-manager symlinks under `node_modules/vite-node`, including a Node 26 stack overflow.
+- Skip: aggregate delivery, export, persistence, and performance checks because this later edit does not change those paths.
+- Risks: the protected feature receipt is unavailable until its dependency-authority preflight supports the installed dependency layout/Node version; the focused unit, type, and live browser checks passed.
 
 ## Decisions
 
