@@ -9,6 +9,8 @@ import {
   GarmentColorwayControl,
   InkColorwayControl,
 } from "./controls/colorway-control";
+import { libraryStampControlType } from "./controls/library-stamp-control-types";
+import { LibraryStampControl } from "./controls/library-stamp-control";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./design/tokens";
 import { DesignCanvas } from "./canvas/design-canvas";
 import { designExportRenderer } from "./renderer/export";
@@ -37,6 +39,7 @@ export const appComposition = composeToolcraftApp(appSchema, {
     renderers: {
       [garmentColorwayControlType]: GarmentColorwayControl,
       [inkColorwayControlType]: InkColorwayControl,
+      [libraryStampControlType]: LibraryStampControl,
     },
   },
   scene: {

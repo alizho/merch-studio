@@ -11,11 +11,9 @@
 import * as React from "react";
 import {
   useToolcraftDispatch,
-  useToolcraftMediaPresentationUrls,
   useToolcraftProductSceneFrame,
   useToolcraftSelector,
 } from "@/toolcraft/runtime/react";
-import type { ToolcraftMediaAsset } from "@/toolcraft/runtime";
 
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "../design/tokens";
 import {
@@ -28,7 +26,8 @@ import { Handles } from "./handles";
 import { loadProductFaces } from "../design/fonts";
 import { readScene, sceneGarmentSources } from "../state/scene";
 import { TARGETS, withComponent, type ComponentRecord } from "../state/components";
-import { useImages, useMediaImages } from "../renderer/image-cache";
+import { useImages } from "../renderer/image-cache";
+import { useImportedImages } from "../renderer/imported-images";
 import { measureContext } from "../renderer/measure";
 import { panelFromRecord, panelWrites } from "../state/selection-values";
 import { useSelectionSync } from "../state/use-selection-sync";
@@ -75,8 +74,11 @@ export function DesignCanvas(): React.JSX.Element | null {
   const mediaAssets = useToolcraftSelector((state) => state.mediaAssets);
   const facesReady = useProductFaces();
 
+  const importedImages = useImportedImages(mediaAssets);
+
   useSelectionSync({
     dispatch,
+    importedImages,
     layers,
     mediaAssets,
     selectedLayerId,
@@ -88,29 +90,6 @@ export function DesignCanvas(): React.JSX.Element | null {
     [layers, values],
   );
   const garmentImages = useImages(sceneGarmentSources(scene));
-
-  const imageAssets = React.useMemo(
-    () =>
-      mediaAssets.filter(
-        (asset: ToolcraftMediaAsset) => asset.assetKind === "image",
-      ),
-    [mediaAssets],
-  );
-  const presentationUrls = useToolcraftMediaPresentationUrls(imageAssets);
-  const mediaSources = React.useMemo(() => {
-    const sources = new Map<string, string>();
-
-    for (const asset of imageAssets) {
-      const url = presentationUrls.get(asset.id);
-
-      if (url) {
-        sources.set(asset.id, url);
-      }
-    }
-
-    return sources;
-  }, [imageAssets, presentationUrls]);
-  const mediaImages = useMediaImages(mediaSources);
 
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
@@ -129,12 +108,12 @@ export function DesignCanvas(): React.JSX.Element | null {
 
     const resources: SceneResources = {
       garments: garmentImages,
-      media: mediaImages,
+      media: importedImages,
     };
 
     context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     drawDesign(context, scene, resources);
-  }, [facesReady, garmentImages, mediaImages, scene]);
+  }, [facesReady, garmentImages, importedImages, scene]);
 
   const handleComponentChange = React.useCallback(
     (layerId: string, record: ComponentRecord, gesture: string) => {

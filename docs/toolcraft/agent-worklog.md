@@ -4,7 +4,7 @@
 
 Mode: product
 
-Active change: canvas-selection-style
+Active change: selected-layer-finish
 
 This is a merch design studio. Later entries stay compact. Detailed requests and results belong in `docs/agent-journal/changes`; text command attempts live in `.toolcraft/journal/runs`.
 
@@ -23,7 +23,7 @@ This is a merch design studio. Later entries stay compact. Detailed requests and
 - Interaction ownership: canvas owns spatial select/transform/delete; panel owns text, type, and ink.
 - Decision: Keep placement on the garment and property edits in the Selected section, with layers for order and visibility.
 - Alternatives rejected: Panel-only placement, fontPicker (cannot load Alliance No.2 locally), locking the camera from a still frame.
-- State/output mapping: garment.* and treatment drive the blank; design.components plus selectedLayer.* drive placed artwork; rasterFrameRenderer draws PNG export.
+- State/output mapping: garment.* drives the blank; design.components plus selectedLayer.* drive placed artwork and per-layer finish; rasterFrameRenderer draws PNG export.
 - Performance intent: ordinary-product-work
 - Verification: Product schema, canvas handles, and selected-entity panel controls are live in the merch studio.
 - Risks: Copied runtime theme edits in src/styles.css still fail integrity until regenerated.
@@ -55,11 +55,43 @@ This is a merch design studio. Later entries stay compact. Detailed requests and
 - Request: remove the black stroke behind the dashed selection border, reduce the anchor size, and keep selection chrome a constant screen size while canvas zoom changes.
 - Changed owner: `src/app/canvas/design-canvas.tsx`, `src/app/canvas/handles.tsx`, `src/app/canvas/selection-chrome.ts`, `src/app/canvas/selection.test.ts`
 - User-visible result: the selection frame now uses one Volt dashed stroke with no dark underlay. Visible anchors are 12 screen pixels and all selection chrome dimensions remain constant through canvas zoom; 24-pixel invisible targets preserve handle usability.
-- Verification tier: Tier 1
-- Reason: localized product-owned canvas overlay styling and zoom geometry; product rendering, export, controls, and runtime ownership are unchanged.
-- Run: focused selection metric unit test passed (2 tests); typecheck passed; manual in-app browser comparison at 64% and 104% measured 12-pixel anchors at both zoom levels, one `#F7FE62` polygon, and no underlay polygon. `npm run test:feature -- handle.resize` was attempted but its protected dependency-authority preflight failed before app startup while inspecting ordinary package-manager symlinks under `node_modules/vite-node`, including a Node 26 stack overflow.
-- Skip: aggregate delivery, export, persistence, and performance checks because this later edit does not change those paths.
+- Verification: focused selection metric unit test passed; live zoom comparison confirmed 12-pixel anchors and one Volt polygon.
 - Risks: the protected feature receipt is unavailable until its dependency-authority preflight supports the installed dependency layout/Node version; the focused unit, type, and live browser checks passed.
+
+### Optimized shirt asset
+
+- Entry type: focused
+- Change ID: optimized-shirt-asset
+- Request: create an optimized derivative of `public/garments/3d/t-shirt_3d_model_free.glb` with reduced geometry and front/back print surfaces, without integrating it into the app.
+- Changed owner: `public/garments/3d/t-shirt_3d_model_free.optimized.glb`; the source GLB remains unchanged.
+- User-visible result: created a separate 743,960-byte GLB containing an 18,000-triangle shirt plus named `PrintSurface_Front` and `PrintSurface_Back` meshes (1,296 triangles each), with clean rectangular 0–1 UV maps projected onto the garment curvature. The 7,610,528-byte source remains unchanged.
+- Verification tier: Tier 1
+- Reason: one new, currently unreferenced product asset; no schema, runtime, renderer, controls, export, or application behavior changes.
+- Run: GLB structural inspection passed; Toolcraft production decoder reported no decode diagnostics; realtime topology analysis found 20,592 triangles, 15,429 vertices, and a 105,875,352-byte estimated peak below the 268,435,456-byte ceiling; front/back names and exact 0–1 UV bounds passed; host-embedded +Z/−Z visual inspection confirmed clean, curved print zones on the intended sides.
+- Skip: app feature, delivery, export, persistence, and performance gates because the derivative is not yet connected to the application.
+- Risks: realtime topology analysis remains at `warning` because the source garment contains split seams/disconnected components and non-manifold vertices; there are no fatal diagnostics, out-of-range indices, unused vertices, or resource-limit failures. App integration remains intentionally unimplemented.
+
+### Components panel
+
+- Entry type: focused
+- Change ID: components-panel
+- Request: artwork should be called components; library should be under components (image library); clicking on a component in the library should automatically add to the canvas; under components should be add image, text, etc.
+- Changed owner: `src/app/app-schema.ts`, `src/app/controls/library-stamp-control.tsx`, `src/app/actions/place-component.ts`
+- User-visible result: One Components section with Image library tiles that stamp on click, Add image, and Add text.
+- builtInFitCheck: ImagePicker stores a selection and ignores a second click on the same tile, so a custom stamp grid reuses public ImagePicker chrome and dispatches place commands on every click.
+- Visual map: public `ImagePicker` owns tile chrome, hover, focus, and selected outline; product geometry is only the existing mark preview SVGs inside those tiles.
+- Verification: unit tests `places each library mark onto the garment when its tile is clicked` and `places a text component into the print area`; host-embedded browser check of the Components section.
+- Risks: Runtime still splits mixed standalone/grouped sections unless Components is authored `layout: "standalone"`.
+
+### Selected layer finish
+
+- Entry type: focused
+- Change ID: selected-layer-finish
+- Request: the Selected panel for the current selected layer should be a separate panel above layers; treatment (print/stitch) should apply only to a layer.
+- Changed owner: `src/app/app-schema.ts`, `src/app/state/components.ts`, `src/app/renderer/compose.ts`
+- User-visible result: Finish lives in the Selected inspector and writes `selectedLayer.treatment` onto that component only. Layers stay the left dock; Selected remains a dedicated Controls section that hides with no selection because the signed host has no second left inspector type.
+- Verification: unit tests for placement inherit, legacy treatment hydration, and authored per-layer finish; host-embedded browser check of Selected Finish with two layers.
+- Risks: Older workspaces without per-record finish still inherit the saved global `treatment` value once, then keep independent layer finishes.
 
 ## Decisions
 
@@ -77,8 +109,8 @@ This is a merch design studio. Later entries stay compact. Detailed requests and
 
 ### Interaction Ownership
 
-- Decision: Canvas owns spatial select, transform, and delete; the panel owns text, type, ink, and exact rotation.
-- Reason: Placement is judged against the garment; token and text values are not spatial.
+- Decision: Canvas owns spatial select, transform, and delete; the panel owns text, type, ink, finish, and exact rotation.
+- Reason: Placement is judged against the garment; token, finish, and text values are not spatial.
 - Evidence: `interactionOwnership` entries `component.select`, `component.transform`, `component.delete`, and selected-entity panel ids.
 
 ### Timeline
@@ -95,8 +127,8 @@ This is a merch design studio. Later entries stay compact. Detailed requests and
 
 ### Controls
 
-- Decision: Garment, Treatment, Artwork, and Selected sections; Selected is hidden when canvas chrome is committed.
-- Reason: Controls group by the blank, the finish, adding artwork, and editing the active component.
+- Decision: Garment, Components, and Selected sections; Selected is hidden when canvas chrome is committed. Finish lives on the selected layer. Components keeps Image library, Add image, and Add text in one standalone section so fileDrop does not split away. Library tiles stamp a mark on every click.
+- Reason: Controls group by the blank, adding components, and editing the active component.
 - Evidence: `appControlSectionInventory` and `src/app/app-schema.ts`.
 
 ### Export

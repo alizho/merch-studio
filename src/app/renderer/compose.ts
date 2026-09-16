@@ -21,11 +21,11 @@ import {
   resolveInkColorway,
   type GarmentDefinition,
   type GarmentView,
-  type Treatment,
 } from "../design/tokens";
 import {
   buildArtworkMask,
   componentBox,
+  resolveRecordImage,
   type ImageResources,
 } from "./artwork";
 import { applyTreatment, treatmentPadding } from "./treatment";
@@ -47,7 +47,6 @@ export type DesignScene = {
   garmentColorHex: string;
   /** Visible component layer ids, index 0 frontmost, matching the panel. */
   layerIds: readonly string[];
-  treatment: Treatment;
   view: GarmentView;
 };
 
@@ -108,21 +107,51 @@ function tintedGarment(
  * stitch or weave passes every frame.
  */
 const treatedCache = new Map<string, { box: Box; surface: Surface }>();
+const imageSourceIds = new WeakMap<object, number>();
+let nextImageSourceId = 1;
 
 type Box = { height: number; width: number };
 
-function treatedCacheKey(record: ComponentRecord, scene: DesignScene): string {
+function imageSourceId(source: CanvasImageSource | undefined): number {
+  if (!source || typeof source !== "object") return 0;
+
+  const existing = imageSourceIds.get(source);
+
+  if (existing) return existing;
+
+  const id = nextImageSourceId;
+  nextImageSourceId += 1;
+  imageSourceIds.set(source, id);
+  return id;
+}
+
+function treatedCacheKey(
+  record: ComponentRecord,
+  resources: SceneResources,
+): string {
   const typography = record.typography;
 
   return [
     record.kind,
-    scene.treatment,
+    record.treatment,
     record.inkId,
     record.inkId === CUSTOM_COLORWAY_ID ? record.inkHex : "",
     Math.round(record.width),
     Math.round(record.height),
     record.markId ?? "",
     record.mediaId ?? "",
+    record.backgroundRemoval ? "background-removed" : "background-kept",
+    record.kind === "image"
+      ? `${record.effectPixelate ? "p" : ""}${record.effectRecolor ? "r" : ""}${record.effectAscii ? "a" : ""}`
+      : "",
+    record.kind === "image" && (record.effectPixelate || record.effectAscii)
+      ? record.effectAmount
+      : "",
+    record.kind === "image" && record.effectAscii ? record.effectCharset : "",
+    record.kind === "image" && (record.effectRecolor || record.effectAscii)
+      ? [record.effectInkId, record.effectInkId === CUSTOM_COLORWAY_ID ? record.effectInkHex : ""].join(",")
+      : "",
+    imageSourceId(resolveRecordImage(record, resources)?.image),
     record.text ?? "",
     typography
       ? [
@@ -149,8 +178,8 @@ function drawComponent(
   scene: DesignScene,
   resources: SceneResources,
 ): void {
-  const padding = treatmentPadding(scene.treatment);
-  const key = treatedCacheKey(record, scene);
+  const padding = treatmentPadding(record.treatment);
+  const key = treatedCacheKey(record, resources);
   const cached = treatedCache.get(key);
   let treated: Surface;
   let box: Box;
@@ -165,10 +194,21 @@ function drawComponent(
       return;
     }
 
+    // Stitch always re-tints to one thread color, even for an image: Recolor
+    // and ASCII already bake the effect ink into their pixels, so stitching
+    // one of those should pick up that same ink rather than the (hidden, for
+    // images) general Ink control's leftover value.
+    const usesEffectInk =
+      record.kind === "image" &&
+      (record.effectRecolor || record.effectAscii);
+    const inkHex = usesEffectInk
+      ? resolveInkColorway(record.effectInkId, record.effectInkHex).hex
+      : resolveInkColorway(record.inkId, record.inkHex).hex;
+
     treated = applyTreatment(
       built.mask,
-      scene.treatment,
-      resolveInkColorway(record.inkId, record.inkHex).hex,
+      record.treatment,
+      inkHex,
       record.kind === "image",
     );
     box = built.box;

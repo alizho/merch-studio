@@ -208,6 +208,36 @@ export function resolveTreatment(value: unknown): Treatment {
   return value === "embroidery" ? "embroidery" : "print";
 }
 
+/**
+ * Effects replace an imported image's pixels before the finish (print/stitch)
+ * is applied, and any combination can be on at once: Pixelate mosaics the
+ * image into blocks, Recolor bakes a duotone in the effect ink over whatever
+ * that leaves, and ASCII redraws whatever remains as monospace glyphs in the
+ * effect ink. That fixed order is also the render order: e.g. Pixelate then
+ * Recolor keeps the mosaic's hard block edges under the duotone, while
+ * turning ASCII on always renders it last regardless of the other two, since
+ * it replaces pixels with glyphs outright. Text and marks are unaffected;
+ * they already recolor via Ink.
+ */
+export type ImageEffectToggles = Readonly<{
+  ascii: boolean;
+  pixelate: boolean;
+  recolor: boolean;
+}>;
+
+export const NO_IMAGE_EFFECTS: ImageEffectToggles = Object.freeze({
+  ascii: false,
+  pixelate: false,
+  recolor: false,
+});
+
+/** Cell size in canvas px for Pixelate blocks and ASCII glyphs. */
+export const DEFAULT_EFFECT_AMOUNT = 12;
+export const MIN_EFFECT_AMOUNT = 3;
+export const MAX_EFFECT_AMOUNT = 48;
+/** ASCII glyph ramp, light to dark; the user can replace it with any characters. */
+export const DEFAULT_ASCII_CHARSET = " .:-=+*#%@";
+
 export type FaceDefinition = {
   /** CSS/canvas family name registered through the FontFace API. */
   family: string;

@@ -9,16 +9,24 @@
 import { canvasFontFor } from "../design/fonts";
 import { createSurface, type Surface } from "./raster";
 import { findMark } from "../library/marks";
-import { resolveFace, type Typography } from "../design/tokens";
+import {
+  resolveFace,
+  resolveInkColorway,
+  type ImageEffectToggles,
+  type Typography,
+} from "../design/tokens";
 import type { ComponentRecord } from "../state/components";
+import { getCutoutImage } from "./background-removal";
+import { getEffectImage } from "./image-effects";
+import type { ImportedImage } from "./imported-images";
 
 type AnyContext =
   | CanvasRenderingContext2D
   | OffscreenCanvasRenderingContext2D;
 
 export type ImageResources = {
-  /** Imported artwork, keyed by runtime media asset id. */
-  media: ReadonlyMap<string, CanvasImageSource>;
+  /** Imported artwork, oriented and keyed by runtime media asset id. */
+  media: ReadonlyMap<string, ImportedImage>;
 };
 
 export type Box = {
@@ -80,6 +88,26 @@ export function measureText(
     height: Math.max(1, lineHeight * lines.length),
     width: Math.max(1, width),
   };
+}
+
+/**
+ * The pixels an image record should draw. A record stamped for different
+ * content than its media id now holds draws nothing, rather than showing
+ * another upload's pixels while it is being re-placed.
+ */
+export function resolveRecordImage(
+  record: ComponentRecord,
+  resources: ImageResources,
+): ImportedImage | undefined {
+  if (record.kind !== "image" || !record.mediaId) return undefined;
+
+  const imported = resources.media.get(record.mediaId);
+
+  return imported &&
+    (record.resourceRef === undefined ||
+      record.resourceRef === imported.resourceRef)
+    ? imported
+    : undefined;
 }
 
 /** The component's unrotated box in canvas units, used for drawing and handles. */
@@ -162,15 +190,44 @@ export function buildArtworkMask(
     return { box, mask: surface };
   }
 
-  const image = record.mediaId
-    ? resources.media.get(record.mediaId)
-    : undefined;
+  const imported = resolveRecordImage(record, resources);
 
-  if (!image) {
+  if (!imported) {
     return null;
   }
 
-  ctx.drawImage(image, padding, padding, box.width, box.height);
+  // The cutout works on the image's own pixels; the padded surface's
+  // transparent frame would hide the backdrop from its edge sampling. The
+  // effect then runs on whichever pixels that leaves, so a pixelated or
+  // ASCII'd cutout keeps its cleared background empty.
+  const cutout = record.backgroundRemoval ? getCutoutImage(imported) : imported;
+  const effectInkHex = resolveInkColorway(
+    record.effectInkId,
+    record.effectInkHex,
+  ).hex;
+  const effects: ImageEffectToggles = {
+    ascii: record.effectAscii,
+    pixelate: record.effectPixelate,
+    recolor: record.effectRecolor,
+  };
+  const effected = getEffectImage(
+    cutout,
+    effects,
+    record.effectAmount,
+    effectInkHex,
+    record.effectCharset,
+  );
+
+  // Pixelate's blocks are deliberately crisp at their own resolution; the
+  // browser's default bilinear downscale into the (usually smaller) mask
+  // would soften every block edge right back into a blur. That only holds
+  // when Pixelate is the last stage, though: ASCII always resamples its own
+  // input down to its glyph grid and draws antialiased text regardless of
+  // what fed it, so once ASCII is also on this goes back to a smooth
+  // resample. Recolor never resamples, so it does not affect this either way.
+  ctx.imageSmoothingEnabled = !(effects.pixelate && !effects.ascii);
+  ctx.drawImage(effected.image, padding, padding, box.width, box.height);
+  ctx.imageSmoothingEnabled = true;
 
   return { box, mask: surface };
 }

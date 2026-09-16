@@ -1,17 +1,42 @@
 /**
- * Image loading shared by the live preview and the PNG export.
+ * Garment art loading shared by the live preview and the PNG export.
  *
  * Decoded images are cached by URL and kept outside React state, so panning,
- * dragging, or re-rendering never re-decodes the garment art. The media
- * registry lets the export path reach imported artwork that the preview has
- * already decoded, without repeating the runtime's resource resolution.
+ * dragging, or re-rendering never re-decodes the garment art. These URLs are
+ * static files; imported artwork lives in `imported-images.ts`, keyed by
+ * content rather than URL.
  */
 
 import * as React from "react";
 
 const imagesByUrl = new Map<string, ImageBitmap>();
 const pendingByUrl = new Map<string, Promise<void>>();
-const mediaImagesById = new Map<string, ImageBitmap>();
+
+/**
+ * Bumped whenever a decode lands. Hooks subscribe to it instead of relying on
+ * their own effect still being active when the decode resolves, which missed
+ * decodes that finished while the URL set was changing.
+ */
+let cacheVersion = 0;
+const cacheListeners = new Set<() => void>();
+
+function notifyCacheChanged(): void {
+  cacheVersion += 1;
+  for (const listener of cacheListeners) listener();
+}
+
+function subscribeCache(listener: () => void): () => void {
+  cacheListeners.add(listener);
+  return () => cacheListeners.delete(listener);
+}
+
+function useCacheVersion(): number {
+  return React.useSyncExternalStore(
+    subscribeCache,
+    () => cacheVersion,
+    () => cacheVersion,
+  );
+}
 
 export function getLoadedImage(url: string): ImageBitmap | undefined {
   return imagesByUrl.get(url);
@@ -40,7 +65,10 @@ export function loadImage(url: string): Promise<void> {
       const response = await fetch(url);
 
       if (response.ok) {
-        imagesByUrl.set(url, await createImageBitmap(await response.blob()));
+        imagesByUrl.set(url, await createImageBitmap(await response.blob(), {
+          imageOrientation: "from-image",
+        }));
+        notifyCacheChanged();
       }
     } catch {
       // A source that cannot be decoded simply stays absent from the cache.
@@ -59,26 +87,14 @@ export function useImages(
   urls: readonly string[],
 ): ReadonlyMap<string, CanvasImageSource> {
   const key = urls.join("|");
-  const [, setRevision] = React.useState(0);
+  const version = useCacheVersion();
 
   React.useEffect(() => {
-    let active = true;
-
     for (const url of urls) {
-      if (imagesByUrl.has(url)) {
-        continue;
+      if (!imagesByUrl.has(url)) {
+        void loadImage(url);
       }
-
-      void loadImage(url).then(() => {
-        if (active) {
-          setRevision((revision) => revision + 1);
-        }
-      });
     }
-
-    return () => {
-      active = false;
-    };
     // `key` is the stable identity of this URL set.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
@@ -96,78 +112,5 @@ export function useImages(
 
     return resolved;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, imagesByUrl.size]);
-}
-
-export function registerMediaImage(mediaId: string, image: ImageBitmap): void {
-  mediaImagesById.set(mediaId, image);
-}
-
-export function forgetMediaImage(mediaId: string): void {
-  mediaImagesById.delete(mediaId);
-}
-
-export function getMediaImages(): ReadonlyMap<string, CanvasImageSource> {
-  return mediaImagesById;
-}
-
-/**
- * Loads imported artwork by runtime media id, keeping the registry the export
- * path reads from in sync with whatever the preview currently shows.
- */
-export function useMediaImages(
-  sources: ReadonlyMap<string, string>,
-): ReadonlyMap<string, CanvasImageSource> {
-  const key = [...sources.entries()].map(([id, url]) => `${id}:${url}`).join("|");
-  const [, setRevision] = React.useState(0);
-
-  React.useEffect(() => {
-    let active = true;
-
-    for (const [mediaId, url] of sources) {
-      const loaded = imagesByUrl.get(url);
-
-      if (loaded) {
-        registerMediaImage(mediaId, loaded);
-        continue;
-      }
-
-      void loadImage(url).then(() => {
-        const decoded = imagesByUrl.get(url);
-
-        if (!active || !decoded) {
-          return;
-        }
-
-        registerMediaImage(mediaId, decoded);
-        setRevision((revision) => revision + 1);
-      });
-    }
-
-    for (const mediaId of [...mediaImagesById.keys()]) {
-      if (!sources.has(mediaId)) {
-        forgetMediaImage(mediaId);
-      }
-    }
-
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-
-  return React.useMemo(() => {
-    const resolved = new Map<string, CanvasImageSource>();
-
-    for (const [mediaId, url] of sources) {
-      const image = imagesByUrl.get(url);
-
-      if (image) {
-        resolved.set(mediaId, image);
-      }
-    }
-
-    return resolved;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, imagesByUrl.size]);
+  }, [key, version]);
 }

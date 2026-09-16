@@ -12,7 +12,6 @@ import {
   resolveGarment,
   resolveGarmentColorway,
   resolveGarmentView,
-  resolveTreatment,
 } from "../design/tokens";
 import { readComponents, TARGETS } from "./components";
 import type { DesignScene } from "../renderer/compose";
@@ -43,7 +42,6 @@ export function readScene(state: StateLike): DesignScene {
           isToolcraftLayerVisibleInTree([...state.layers], layer.id),
       )
       .map((layer: ToolcraftLayer) => layer.id),
-    treatment: resolveTreatment(state.values[TARGETS.treatment]),
     view,
   };
 }

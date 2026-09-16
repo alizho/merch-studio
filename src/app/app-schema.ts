@@ -12,17 +12,21 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   CUSTOM_COLORWAY_ID,
+  DEFAULT_ASCII_CHARSET,
   DEFAULT_CUSTOM_GARMENT_HEX,
   DEFAULT_CUSTOM_INK_HEX,
+  DEFAULT_EFFECT_AMOUNT,
   DEFAULT_GARMENT_COLORWAY_ID,
   DEFAULT_INK_COLORWAY_ID,
   DEFAULT_TYPOGRAPHY,
+  MAX_EFFECT_AMOUNT,
+  MIN_EFFECT_AMOUNT,
 } from "./design/tokens";
-import { MARK_ITEMS } from "./design/swatches";
 import {
   garmentColorwayControlType,
   inkColorwayControlType,
 } from "./controls/colorway-control-types";
+import { libraryStampControlType } from "./controls/library-stamp-control-types";
 import { DEFAULT_MARK_ID } from "./library/marks";
 import { TARGETS } from "./state/components";
 
@@ -49,6 +53,11 @@ const whenTextSelected = {
   mode: "conditional",
 } as const;
 
+const whenImageSelected = {
+  all: [{ equals: "image", target: TARGETS.selectedKind }],
+  mode: "conditional",
+} as const;
+
 /**
  * Ink applies to type and to the marks. Imported artwork keeps its own colors
  * in print, so an ink choice would not change it there.
@@ -72,6 +81,32 @@ const whenInkIsCustom = {
   all: [
     { oneOf: ["text", "mark"], target: TARGETS.selectedKind },
     { equals: CUSTOM_COLORWAY_ID, target: TARGETS.selectedInk },
+  ],
+  mode: "conditional",
+} as const;
+
+/**
+ * Effect ink and Detail are shared settings, each read by more than one of
+ * the three independent effect toggles below (ink by Recolor and ASCII,
+ * Detail by Pixelate and ASCII), so gating either on "the specific toggle
+ * that currently needs it" would need an OR across independent booleans that
+ * applicability predicates cannot express (predicates only AND). They stay
+ * visible for any selected image instead, like Cutout does, so a value set
+ * ahead of turning an effect on is not lost or hidden.
+ */
+const whenEffectInkIsCustom = {
+  all: [
+    { equals: "image", target: TARGETS.selectedKind },
+    { equals: CUSTOM_COLORWAY_ID, target: TARGETS.selectedEffectInk },
+  ],
+  mode: "conditional",
+} as const;
+
+/** The glyph ramp only means anything for ASCII, which owns this one alone. */
+const whenEffectIsAscii = {
+  all: [
+    { equals: "image", target: TARGETS.selectedKind },
+    { equals: true, target: TARGETS.selectedEffectAscii },
   ],
   mode: "conditional",
 } as const;
@@ -139,58 +174,59 @@ export const appSchema = defineToolcraft({
           },
           {
             controls: {
-              treatment: {
+              mark: {
                 applicability: always,
+                defaultValue: DEFAULT_MARK_ID,
+                label: "Image library",
+                orderRole: "primary",
+                target: TARGETS.libraryMark,
+                type: libraryStampControlType,
+              },
+              upload: {
+                accept: "image/png,image/jpeg,image/svg+xml,image/webp",
+                applicability: always,
+                assetKind: "image",
+                label: "Add image",
+                multiple: true,
+                target: "media.sources",
+                type: "fileDrop",
+              },
+              place: {
+                actions: [{ label: "Add text", value: "component.addText" }],
+                applicability: always,
+                label: false,
+                target: "component.place",
+                type: "actions",
+              },
+            },
+            // Standalone so imagePicker-class tiles, fileDrop, and actions stay
+            // in one Components section instead of splitting by layout kind.
+            id: "components",
+            layout: "standalone",
+            title: "Components",
+          },
+          {
+            controls: {
+              treatment: {
+                applicability: whenComponentSelected,
                 defaultValue: "print",
                 label: "Finish",
                 options: [
                   { label: "Print", value: "print" },
                   { label: "Stitch", value: "embroidery" },
                 ],
-                target: TARGETS.treatment,
+                target: TARGETS.selectedTreatment,
                 type: "segmented",
               },
-            },
-            description:
-              "Print lays flat ink on the cloth. Stitch renders artwork as embroidery.",
-            id: "treatment",
-            title: "Treatment",
-          },
-          {
-            controls: {
-              mark: {
-                applicability: always,
-                defaultValue: DEFAULT_MARK_ID,
-                items: MARK_ITEMS,
-                label: "Library",
-                target: TARGETS.libraryMark,
-                type: "imagePicker",
+              cutout: {
+                applicability: whenImageSelected,
+                defaultValue: false,
+                description:
+                  "Clears a mostly uniform outer color connected to the image edges.",
+                label: "Cutout image",
+                target: TARGETS.selectedCutout,
+                type: "switch",
               },
-              place: {
-                actions: [
-                  { label: "Add mark", value: "component.addMark" },
-                  { label: "Add text", value: "component.addText" },
-                ],
-                applicability: always,
-                label: false,
-                target: "component.place",
-                type: "actions",
-              },
-              upload: {
-                accept: "image/png,image/jpeg,image/svg+xml,image/webp",
-                applicability: always,
-                assetKind: "image",
-                label: "Import artwork",
-                multiple: true,
-                target: "media.sources",
-                type: "fileDrop",
-              },
-            },
-            id: "artwork",
-            title: "Artwork",
-          },
-          {
-            controls: {
               text: {
                 applicability: whenTextSelected,
                 commitMode: "content",
@@ -203,7 +239,7 @@ export const appSchema = defineToolcraft({
               face: {
                 applicability: whenTextSelected,
                 defaultValue: DEFAULT_TYPOGRAPHY.faceId,
-                label: "Face",
+                label: "Font",
                 options: [
                   { label: "Alliance No.2", value: "alliance" },
                   { label: "Inter", value: "inter" },
@@ -275,9 +311,82 @@ export const appSchema = defineToolcraft({
               },
             },
             description:
-              "Applies to the selected component. Drag, scale, and rotate it on the canvas.",
+              "Finish, image cleanup, type, ink, and rotation apply only to the selected component.",
             id: "component",
             title: "Selected",
+          },
+          {
+            controls: {
+              effectPixelate: {
+                applicability: whenImageSelected,
+                defaultValue: false,
+                description: "Mosaics the image into blocks.",
+                label: "Pixelate",
+                target: TARGETS.selectedEffectPixelate,
+                type: "switch",
+              },
+              effectRecolor: {
+                applicability: whenImageSelected,
+                defaultValue: false,
+                description: "Bakes a duotone in the ink below.",
+                label: "Recolor",
+                target: TARGETS.selectedEffectRecolor,
+                type: "switch",
+              },
+              effectAscii: {
+                applicability: whenImageSelected,
+                defaultValue: false,
+                description:
+                  "Replaces the image with monospace characters in the ink below.",
+                label: "ASCII",
+                target: TARGETS.selectedEffectAscii,
+                type: "switch",
+              },
+              effectInk: {
+                applicability: whenImageSelected,
+                defaultValue: DEFAULT_INK_COLORWAY_ID,
+                description: "Used by Recolor and ASCII.",
+                label: "Effect ink",
+                orderRole: "primary",
+                target: TARGETS.selectedEffectInk,
+                type: inkColorwayControlType,
+              },
+              effectInkColor: {
+                applicability: whenEffectInkIsCustom,
+                defaultValue: DEFAULT_CUSTOM_INK_HEX,
+                label: "Custom effect ink",
+                target: TARGETS.selectedEffectInkColor,
+                type: "color",
+              },
+              effectAmount: {
+                applicability: whenImageSelected,
+                defaultValue: DEFAULT_EFFECT_AMOUNT,
+                description: "Used by Pixelate and ASCII; smaller values keep more detail.",
+                label: "Detail",
+                max: MAX_EFFECT_AMOUNT,
+                min: MIN_EFFECT_AMOUNT,
+                sliderValueKind: "continuous",
+                step: 1,
+                target: TARGETS.selectedEffectAmount,
+                type: "slider",
+                unit: "px",
+              },
+              effectCharset: {
+                applicability: whenEffectIsAscii,
+                commitMode: "content",
+                defaultValue: DEFAULT_ASCII_CHARSET,
+                description:
+                  "Characters render light to dark, left to right; the leftmost stands in for empty space.",
+                label: "Characters",
+                target: TARGETS.selectedEffectCharset,
+                textValueKind: "single-line",
+                type: "text",
+              },
+            },
+            description:
+              "Any combination of Pixelate, Recolor, and ASCII can be on for the selected image, on top of its finish.",
+            id: "effects",
+            title: "Effects",
           },
         ],
         title: "Controls",

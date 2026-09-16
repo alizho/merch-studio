@@ -10,7 +10,8 @@
  *
  * Records are never pruned when a layer disappears. Undoing a delete restores
  * the layer, and the surviving record is what makes the component come back
- * with it.
+ * with it. Image records are checked against their asset's content, because
+ * the runtime recycles layer and media ids for later uploads.
  */
 
 import * as React from "react";
@@ -21,10 +22,9 @@ import type {
 } from "@/toolcraft/runtime";
 
 import {
-  DEFAULT_CUSTOM_INK_HEX,
-  DEFAULT_INK_COLORWAY_ID,
   resolveGarment,
   resolveGarmentView,
+  resolveTreatment,
 } from "../design/tokens";
 import {
   applyPanelToRecord,
@@ -42,12 +42,16 @@ import {
   type ComponentMap,
   type ComponentRecord,
 } from "./components";
-
-/** Fraction of the print area a newly imported image fills. */
-const IMPORT_WIDTH_RATIO = 0.7;
+import {
+  raisePlacedLayers,
+  reconcileImageComponents,
+  type DecodedImageSize,
+} from "./image-components";
 
 type SyncInputs = {
   dispatch: React.Dispatch<ToolcraftCommand>;
+  /** Decoded, oriented pixel sizes by media id. */
+  importedImages: ReadonlyMap<string, DecodedImageSize>;
   layers: readonly ToolcraftLayer[];
   mediaAssets: readonly ToolcraftMediaAsset[];
   selectedLayerId: string | null;
@@ -56,11 +60,15 @@ type SyncInputs = {
 
 export function useSelectionSync({
   dispatch,
+  importedImages,
   layers,
   mediaAssets,
   selectedLayerId,
   values,
 }: SyncInputs): void {
+  // Image layers that arrived with the saved workspace (layers and media are
+  // restored before the first render), captured once.
+  const restoredLayerIdsRef = React.useRef<ReadonlySet<string> | null>(null);
   const lastRef = React.useRef<{
     layerId: string | null;
     panel: PanelValues;
@@ -79,39 +87,36 @@ export function useSelectionSync({
       });
     };
 
-    // Imported artwork arrives as a runtime media layer; give it a record so
-    // it becomes an editable component.
-    const layerIds = new Set(layers.map((layer) => layer.id));
-    const adopted = mediaAssets.filter(
-      (asset) =>
-        asset.assetKind === "image" &&
-        layerIds.has(asset.layerId) &&
-        !components[asset.layerId],
+    // Imported artwork arrives as a runtime media layer. Give each one a record
+    // for exactly that import, and keep its box on the decoded pixel ratio.
+    // This returns early so the selection pass below sees the new record.
+    restoredLayerIdsRef.current ??= new Set(
+      mediaAssets.map((asset) => asset.layerId),
     );
 
-    if (adopted.length > 0) {
-      const garment = resolveGarment(values[TARGETS.garmentType]);
-      const placement =
-        garment.placement[resolveGarmentView(values[TARGETS.garmentView])];
-      let next = components;
+    const garment = resolveGarment(values[TARGETS.garmentType]);
+    const reconciled = reconcileImageComponents({
+      components,
+      decoded: importedImages,
+      layerIds: new Set(layers.map((layer) => layer.id)),
+      mediaAssets,
+      placement:
+        garment.placement[resolveGarmentView(values[TARGETS.garmentView])],
+      restoredLayerIds: restoredLayerIdsRef.current,
+      treatment: resolveTreatment(values[TARGETS.selectedTreatment]),
+    });
 
-      for (const asset of adopted) {
-        const width = Math.round(placement.width * IMPORT_WIDTH_RATIO);
+    if (reconciled) {
+      writeComponents(reconciled.components, "Place artwork");
 
-        next = withComponent(next, asset.layerId, {
-          centerX: placement.x + placement.width / 2,
-          centerY: placement.y + placement.height / 2,
-          height: width,
-          inkHex: DEFAULT_CUSTOM_INK_HEX,
-          inkId: DEFAULT_INK_COLORWAY_ID,
-          kind: "image",
-          mediaId: asset.id,
-          rotation: 0,
-          width,
-        });
+      // New uploads join the top of the stack like text and marks. The runtime
+      // records reorders as their own step, so undoing an upload first drops it
+      // back to where the runtime put it, then removes it.
+      const raised = raisePlacedLayers(layers, reconciled.placedLayerIds);
+
+      if (raised) {
+        dispatch({ layers: raised, selectedLayerId, type: "layers.reorder" });
       }
-
-      writeComponents(next, "Place artwork");
 
       return;
     }
@@ -204,5 +209,5 @@ export function useSelectionSync({
     if (!panelEqual(panelFromRecord(record), panelNow)) {
       hydrate(record);
     }
-  }, [dispatch, layers, mediaAssets, selectedLayerId, values]);
+  }, [dispatch, importedImages, layers, mediaAssets, selectedLayerId, values]);
 }

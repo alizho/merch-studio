@@ -9,7 +9,8 @@
 import type { ToolcraftProductExportRenderer } from "@/toolcraft/runtime";
 
 import { drawDesign, type SceneResources } from "./compose";
-import { getLoadedImage, getMediaImages, loadImage } from "./image-cache";
+import { getLoadedImage, loadImage } from "./image-cache";
+import { resolveImportedImages } from "./imported-images";
 import { loadProductFaces } from "../design/fonts";
 import { readScene, sceneGarmentSources } from "../state/scene";
 
@@ -35,7 +36,9 @@ export const designExportRenderer: ToolcraftProductExportRenderer = {
 
     const resources: SceneResources = {
       garments,
-      media: getMediaImages(),
+      // Imported pixels are decoded by the live preview; resolving them from
+      // this frame's own assets keeps export on the same content and transform.
+      media: resolveImportedImages(state.mediaAssets),
     };
 
     // The context is in scene/world coordinates and the garment frame is

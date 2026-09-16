@@ -12,10 +12,16 @@
  */
 
 import {
+  DEFAULT_ASCII_CHARSET,
   DEFAULT_CUSTOM_INK_HEX,
+  DEFAULT_EFFECT_AMOUNT,
   DEFAULT_INK_COLORWAY_ID,
   DEFAULT_TYPOGRAPHY,
+  MAX_EFFECT_AMOUNT,
+  MIN_EFFECT_AMOUNT,
   readHexColor,
+  resolveTreatment,
+  type Treatment,
   type Typography,
 } from "../design/tokens";
 import { DEFAULT_MARK_ID } from "../library/marks";
@@ -27,7 +33,15 @@ export const TARGETS = {
   garmentType: "garment.type",
   garmentView: "garment.view",
   libraryMark: "library.mark",
+  selectedCutout: "selectedLayer.cutout",
   selectedCase: "selectedLayer.case",
+  selectedEffectAmount: "selectedLayer.effectAmount",
+  selectedEffectAscii: "selectedLayer.effectAscii",
+  selectedEffectCharset: "selectedLayer.effectCharset",
+  selectedEffectInk: "selectedLayer.effectInk",
+  selectedEffectInkColor: "selectedLayer.effectInkColor",
+  selectedEffectPixelate: "selectedLayer.effectPixelate",
+  selectedEffectRecolor: "selectedLayer.effectRecolor",
   selectedFace: "selectedLayer.face",
   selectedInk: "selectedLayer.ink",
   selectedInkColor: "selectedLayer.inkColor",
@@ -36,6 +50,8 @@ export const TARGETS = {
   selectedSize: "selectedLayer.size",
   selectedText: "selectedLayer.text",
   selectedTracking: "selectedLayer.tracking",
+  selectedTreatment: "selectedLayer.treatment",
+  /** Pre-per-layer finish; still read when hydrating older workspaces. */
   treatment: "treatment",
 } as const;
 
@@ -46,9 +62,27 @@ export function isComponentKind(value: unknown): value is ComponentKind {
 }
 
 export type ComponentRecord = {
+  /** Removes a flat, edge-connected backdrop from imported artwork. */
+  backgroundRemoval: boolean;
   /** Center in canvas coordinates; rotation is applied about this point. */
   centerX: number;
   centerY: number;
+  /** Pixelate/ASCII cell size in canvas px. */
+  effectAmount: number;
+  /** Redraws the image as monospace glyphs; stacks with Pixelate and Recolor. */
+  effectAscii: boolean;
+  /** ASCII's glyph ramp, light to dark; user-editable, defaults to a tonal set. */
+  effectCharset: string;
+  /**
+   * The effect's own custom ink, kept separate from the component's general
+   * ink (which images never expose) so Recolor/ASCII have a color to draw in.
+   */
+  effectInkHex: string;
+  effectInkId: string;
+  /** Mosaics the image into blocks; stacks with Recolor and ASCII. */
+  effectPixelate: boolean;
+  /** Bakes a duotone in the effect ink; stacks with Pixelate and ASCII. */
+  effectRecolor: boolean;
   height: number;
   /**
    * The component's custom ink, kept per component so switching a component to
@@ -60,8 +94,16 @@ export type ComponentRecord = {
   markId?: string;
   /** Runtime media asset id for imported artwork. */
   mediaId?: string;
+  /**
+   * Content address of the imported bytes this image was placed for. Runtime
+   * media ids are recycled after deletes, so this is what proves a record
+   * still belongs to its layer's asset.
+   */
+  resourceRef?: string;
   rotation: number;
   text?: string;
+  /** Print or stitch, owned by this component rather than the garment. */
+  treatment: Treatment;
   typography?: Typography;
   width: number;
 };
@@ -106,7 +148,10 @@ function readTypography(value: unknown): Typography {
 }
 
 /** Parses a persisted or imported record, falling back rather than throwing. */
-export function readComponentRecord(value: unknown): ComponentRecord | null {
+export function readComponentRecord(
+  value: unknown,
+  fallbackTreatment: Treatment = "print",
+): ComponentRecord | null {
   if (!isRecordLike(value)) {
     return null;
   }
@@ -114,8 +159,28 @@ export function readComponentRecord(value: unknown): ComponentRecord | null {
   const kind = readKind(value.kind);
 
   return {
+    backgroundRemoval: kind === "image" && value.backgroundRemoval === true,
     centerX: readNumber(value.centerX, 0),
     centerY: readNumber(value.centerY, 0),
+    effectAmount: Math.max(
+      MIN_EFFECT_AMOUNT,
+      Math.min(
+        MAX_EFFECT_AMOUNT,
+        readNumber(value.effectAmount, DEFAULT_EFFECT_AMOUNT),
+      ),
+    ),
+    effectAscii: kind === "image" && value.effectAscii === true,
+    effectCharset:
+      typeof value.effectCharset === "string" && value.effectCharset.length > 0
+        ? value.effectCharset
+        : DEFAULT_ASCII_CHARSET,
+    effectInkHex: readHexColor(value.effectInkHex, DEFAULT_CUSTOM_INK_HEX),
+    effectInkId:
+      typeof value.effectInkId === "string"
+        ? value.effectInkId
+        : DEFAULT_INK_COLORWAY_ID,
+    effectPixelate: kind === "image" && value.effectPixelate === true,
+    effectRecolor: kind === "image" && value.effectRecolor === true,
     height: Math.max(1, readNumber(value.height, 120)),
     inkHex: readHexColor(value.inkHex, DEFAULT_CUSTOM_INK_HEX),
     inkId:
@@ -129,6 +194,9 @@ export function readComponentRecord(value: unknown): ComponentRecord | null {
     ...(kind === "image" && typeof value.mediaId === "string"
       ? { mediaId: value.mediaId }
       : {}),
+    ...(kind === "image" && typeof value.resourceRef === "string"
+      ? { resourceRef: value.resourceRef }
+      : {}),
     rotation: readNumber(value.rotation, 0),
     ...(kind === "text"
       ? {
@@ -136,6 +204,9 @@ export function readComponentRecord(value: unknown): ComponentRecord | null {
           typography: readTypography(value.typography),
         }
       : {}),
+    treatment: resolveTreatment(
+      value.treatment === undefined ? fallbackTreatment : value.treatment,
+    ),
     width: Math.max(1, readNumber(value.width, 240)),
   };
 }
@@ -147,10 +218,11 @@ export function readComponents(values: Record<string, unknown>): ComponentMap {
     return EMPTY_COMPONENTS;
   }
 
+  const inherited = resolveTreatment(values[TARGETS.treatment]);
   const entries: Record<string, ComponentRecord> = {};
 
   for (const [layerId, candidate] of Object.entries(raw)) {
-    const record = readComponentRecord(candidate);
+    const record = readComponentRecord(candidate, inherited);
 
     if (record) {
       entries[layerId] = record;

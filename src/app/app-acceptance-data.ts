@@ -9,6 +9,7 @@ import {
   garmentColorwayControlType,
   inkColorwayControlType,
 } from "./controls/colorway-control-types";
+import { libraryStampControlType } from "./controls/library-stamp-control-types";
 
 const persistenceSlices =
   appSchema.persistence.storage === "localStorage"
@@ -133,6 +134,67 @@ export const appProductReadiness: ToolcraftProductReadiness = {
     {
       alternative: {
         reason:
+          "A global finish would restitch every component when only one layer should change.",
+        surface: "canvas",
+      },
+      capability: "property-edit",
+      evidence: {
+        detail:
+          "Print versus stitch is a per-layer finish with no spatial component, so it belongs with the other selected-layer properties.",
+        source: "user-request",
+      },
+      id: "component.treatment",
+      reason: "Finish applies to the selected layer only.",
+      selectionScope: {
+        mode: "selected-entity",
+        selectionInteractionId: "component.select",
+      },
+      surface: "panel",
+      target: "selectedLayer.treatment",
+    },
+    {
+      alternative: {
+        reason:
+          "Background cleanup is a reversible image property, not spatial canvas manipulation.",
+        surface: "canvas",
+      },
+      capability: "property-edit",
+      evidence: {
+        detail:
+          "The user explicitly requested the ability to remove backgrounds from added images.",
+        source: "user-request",
+      },
+      id: "component.background-removal",
+      reason:
+        "The selected-image switch keeps cleanup discoverable and applies it only to that artwork layer.",
+      selectionScope: {
+        mode: "selected-entity",
+        selectionInteractionId: "component.select",
+      },
+      surface: "panel",
+      target: "selectedLayer.cutout",
+    },
+    {
+      alternative: {
+        reason:
+          "Dropping a mark onto the garment would hide which library tile was chosen and duplicate the catalog already in the panel.",
+        surface: "canvas",
+      },
+      capability: "command",
+      evidence: {
+        detail:
+          "Clicking a component in the library should automatically add it to the canvas.",
+        source: "user-request",
+      },
+      id: "component.place.library",
+      reason:
+        "The image library is a catalog of stamps; clicking a tile is the add command.",
+      surface: "panel",
+      target: "library.mark",
+    },
+    {
+      alternative: {
+        reason:
           "In-canvas text editing would rebuild a text input over product output.",
         surface: "canvas",
       },
@@ -155,9 +217,9 @@ export const appProductReadiness: ToolcraftProductReadiness = {
   mode: "product",
   productName: "Merch Studio",
   productSummary:
-    "An internal tool for prototyping apparel designs: pick a garment and colorway, place marks, type, and imported artwork inside the print area, and switch the finish between screen print and embroidery.",
+    "An internal tool for prototyping apparel designs: pick a garment and colorway, place marks, type, and imported artwork inside the print area, and finish each layer as screen print or embroidery.",
   requestedBehavior:
-    "Flip a t-shirt or hoodie between front and back, apply a curated garment colorway, place and manipulate text, library marks, and imported artwork, undo and redo every edit, keep the design across reloads, and switch components between a print and an embroidery treatment.",
+    "Flip a t-shirt or hoodie between front and back, apply a curated garment colorway, place aspect-correct text, library marks, and distinct imported artwork, remove flat image backgrounds, undo and redo every edit, keep the design across reloads, and switch the selected layer between a print and an embroidery treatment.",
   viewInteraction: {
     mode: "non-spatial",
     reason:
@@ -247,47 +309,49 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,
     automatedTestName:
-      "resolves both treatments and gives embroidery room to thicken",
+      "places each library mark onto the garment when its tile is clicked",
     browser: false,
-    componentType: "segmented",
-    evidence: "rendered-pixels",
+    builtInFitCheck: {
+      capabilities: ["custom-interaction"],
+      checkedBuiltIns: ["imagePicker", "actions"],
+      closestBuiltIn: "imagePicker",
+      productObservable:
+        "Clicking a library tile adds that mark to the print area, including a second click on the tile that is already selected.",
+      whyInsufficient:
+        "ImagePicker commits a stored selection and treats a second click on the same tile as a no-op, so it cannot stamp another copy of the visible mark. The library must place a component on every tile click.",
+    },
+    componentType: libraryStampControlType,
+    customControlCoverage: [
+      "built-in-gap",
+      "kit-primitives",
+      "minimal-ui",
+      "product-output",
+      "runtime-state",
+    ],
+    evidence: "command-side-effect",
     expectedObservable:
-      "Print renders flat ink with a fabric weave; Stitch thickens the artwork and adds satin stitching with a border and relief.",
-    fixture: "one placed mark",
-    id: "treatment",
-    kind: "control",
-    optionCoverage: "each-visible-item",
-    target: "treatment",
-    userAction: "Choose Print, then Stitch.",
-  },
-  {
-    automated: true,
-    automatedTestName: "exposes every library mark as a single recolorable path",
-    browser: false,
-    componentType: "imagePicker",
-    evidence: "product-output",
-    expectedObservable:
-      "The chosen mark is the one placed onto the garment, drawn from its path data.",
+      "Each library tile places that mark, drawn from its path data, centered on the garment's placement anchor.",
     fixture: "three official Infisical marks",
     id: "library.mark",
+    interactionId: "component.place.library",
     kind: "control",
     optionCoverage: "each-visible-item",
     target: "library.mark",
-    userAction: "Choose each mark tile.",
+    userAction: "Click each mark tile in the image library.",
   },
   {
     automated: true,
-    automatedTestName: "places a mark and a text component into the print area",
+    automatedTestName: "places a text component into the print area",
     browser: false,
     componentType: "actions",
     evidence: "command-side-effect",
     expectedObservable:
-      "Add mark and Add text each create a layer and a component record centered on the garment's placement anchor.",
+      "Add text creates a layer and a text component record centered on the garment's placement anchor.",
     fixture: "empty design",
     id: "component.place",
     kind: "control",
     target: "component.place",
-    userAction: "Press Add mark, then Add text.",
+    userAction: "Press Add text.",
   },
   {
     automated: true,
@@ -296,13 +360,48 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
     componentType: "fileDrop",
     evidence: "media-lifecycle",
     expectedObservable:
-      "An imported image becomes a component sized to the garment and carries the current treatment.",
-    fixture: "one imported PNG",
+      "Each imported image becomes its own component, preserves its intrinsic aspect ratio, uses its own source pixels, and carries that layer's treatment.",
+    fixture: "two imported PNGs with different dimensions and pixels",
     id: "media.sources",
     kind: "control",
     mediaLifecycleCoverage: ["upload", "remove", "reset"],
     target: "media.sources",
     userAction: "Import an image, then remove it and reset.",
+  },
+  {
+    automated: true,
+    automatedTestName:
+      "removes only the edge-connected background from selected artwork",
+    browser: false,
+    componentType: "switch",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Remove background clears the selected imported image's flat outer backdrop while keeping enclosed artwork and other image layers unchanged.",
+    fixture: "two imported images, one with a flat outer background",
+    id: "selected.cutout",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    selectionScopeCoverage: "two-entity-isolation",
+    target: "selectedLayer.cutout",
+    userAction: "Select an imported image and turn on Cutout image.",
+  },
+  {
+    automated: true,
+    automatedTestName:
+      "resolves both treatments on the selected layer and gives embroidery room to thicken",
+    browser: false,
+    componentType: "segmented",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Print renders clean flat ink on the selected layer; Stitch thickens that layer and adds satin stitching with a border and relief, leaving other layers unchanged.",
+    fixture: "two placed marks",
+    id: "selected.treatment",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    optionCoverage: "each-visible-item",
+    selectionScopeCoverage: "two-entity-isolation",
+    target: "selectedLayer.treatment",
+    userAction: "Select a component and choose Print, then Stitch.",
   },
   {
     automated: true,
@@ -654,43 +753,25 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       title: "Garment",
     },
     {
-      entity: "Treatment",
-      entityId: "treatment",
-      finiteSelectors: [
-        {
-          reason:
-            "The finish changes how every component renders and owns that outcome by itself.",
-          role: "parameter",
-          target: "treatment",
-        },
-      ],
+      entity: "Components",
+      entityId: "components",
+      finiteSelectors: [],
       groupingReason:
-        "The finish applies to the whole design rather than to one component, so it stands apart from the selection.",
-      id: "treatment",
-      targets: ["treatment"],
-      title: "Treatment",
-    },
-    {
-      entity: "Artwork",
-      entityId: "artwork",
-      finiteSelectors: [
-        {
-          reason:
-            "The library choice decides which mark the place command adds and owns that outcome.",
-          role: "parameter",
-          target: "library.mark",
-        },
-      ],
-      groupingReason:
-        "Choosing a mark, placing it, and importing artwork are the one task of getting artwork onto the garment.",
-      id: "artwork",
-      targets: ["library.mark", "component.place", "media.sources"],
-      title: "Artwork",
+        "Choosing a library mark, adding text, and adding an image are the one task of getting components onto the garment.",
+      id: "components",
+      targets: ["library.mark", "media.sources", "component.place"],
+      title: "Components",
     },
     {
       entity: "Selected component",
       entityId: "component",
       finiteSelectors: [
+        {
+          reason:
+            "Background removal changes only the selected image's rendered pixels.",
+          role: "parameter",
+          target: "selectedLayer.cutout",
+        },
         {
           reason:
             "The face changes the rendered typeface of the selected text and owns that outcome.",
@@ -709,11 +790,18 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
           role: "parameter",
           target: "selectedLayer.ink",
         },
+        {
+          reason:
+            "Finish changes how the selected layer renders and owns that outcome.",
+          role: "parameter",
+          target: "selectedLayer.treatment",
+        },
       ],
       groupingReason:
         "Every control here edits whichever component is selected, so they share one reset scope and disappear together when nothing is selected.",
       id: "component",
       targets: [
+        "selectedLayer.cutout",
         "selectedLayer.text",
         "selectedLayer.face",
         "selectedLayer.size",
@@ -722,7 +810,51 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.rotation",
         "selectedLayer.ink",
         "selectedLayer.inkColor",
+        "selectedLayer.treatment",
       ],
       title: "Selected",
+    },
+    {
+      entity: "Selected component effects",
+      entityId: "componentEffects",
+      finiteSelectors: [
+        {
+          reason:
+            "Pixelate replaces the selected image's pixels with a block mosaic and owns that outcome.",
+          role: "parameter",
+          target: "selectedLayer.effectPixelate",
+        },
+        {
+          reason:
+            "Recolor replaces the selected image's pixels with a duotone in the effect ink and owns that outcome.",
+          role: "parameter",
+          target: "selectedLayer.effectRecolor",
+        },
+        {
+          reason:
+            "ASCII replaces the selected image's pixels with monospace glyphs and owns that outcome.",
+          role: "parameter",
+          target: "selectedLayer.effectAscii",
+        },
+        {
+          reason:
+            "The effect ink recolors Recolor and ASCII output and owns that outcome.",
+          role: "parameter",
+          target: "selectedLayer.effectInk",
+        },
+      ],
+      groupingReason:
+        "Pixelate, Recolor, and ASCII each replace the selected image's pixels before it is treated and can combine freely, so they share one reset scope separate from finish and cutout.",
+      id: "effects",
+      targets: [
+        "selectedLayer.effectPixelate",
+        "selectedLayer.effectRecolor",
+        "selectedLayer.effectAscii",
+        "selectedLayer.effectInk",
+        "selectedLayer.effectInkColor",
+        "selectedLayer.effectAmount",
+        "selectedLayer.effectCharset",
+      ],
+      title: "Effects",
     },
   ];

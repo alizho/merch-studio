@@ -26,133 +26,18 @@
       "selectedLayer.rotation": 0,
       "selectedLayer.ink": "ink",
       "selectedLayer.inkColor": "#FF6B3D",
+      "selectedLayer.treatment": "print",
+      "selectedLayer.cutout": false,
+      "selectedLayer.effectPixelate": false,
+      "selectedLayer.effectRecolor": false,
+      "selectedLayer.effectAscii": false,
+      "selectedLayer.effectAmount": 12,
+      "selectedLayer.effectCharset": " .:-=+*#%@",
+      "selectedLayer.effectInk": "ink",
+      "selectedLayer.effectInkColor": "#FF6B3D",
       "export.image.format": "png",
       "export.image.resolution": "4k",
-      "design.components": {
-        "layer-1": {
-          "centerX": 544.1885778323326,
-          "centerY": 543.2104940980753,
-          "height": 249,
-          "inkHex": "#FF6B3D",
-          "inkId": "volt",
-          "kind": "image",
-          "mediaId": "media-1",
-          "rotation": -3.4,
-          "width": 249
-        },
-        "component-mu3cwqg8-dvx3m5": {
-          "centerX": 653.2226599211044,
-          "centerY": 833.168938366965,
-          "height": 67,
-          "inkHex": "#FF6B3D",
-          "inkId": "volt",
-          "kind": "mark",
-          "markId": "wordmark",
-          "rotation": 0,
-          "width": 298
-        },
-        "layer-3": {
-          "centerX": 610.8744949060628,
-          "centerY": 555.084425284229,
-          "height": 294,
-          "inkHex": "#FF6B3D",
-          "inkId": "volt",
-          "kind": "image",
-          "mediaId": "media-1",
-          "rotation": 5.9,
-          "width": 294
-        },
-        "component-mu3dbrte-z4p3gu": {
-          "centerX": 591.9433933643363,
-          "centerY": 792.1173652931626,
-          "height": 122,
-          "inkHex": "#FF6B3D",
-          "inkId": "ink",
-          "kind": "mark",
-          "markId": "wordmark",
-          "rotation": 0,
-          "width": 537
-        },
-        "layer-2": {
-          "centerX": 539.5708530296586,
-          "centerY": 604.21082368398,
-          "height": 294,
-          "inkHex": "#FF6B3D",
-          "inkId": "volt",
-          "kind": "image",
-          "mediaId": "media-1",
-          "rotation": 0,
-          "width": 294
-        },
-        "component-mu3g16uv-1eskg0": {
-          "centerX": 595,
-          "centerY": 680,
-          "height": 67,
-          "inkHex": "#FF6B3D",
-          "inkId": "volt",
-          "kind": "mark",
-          "markId": "wordmark",
-          "rotation": 0,
-          "width": 298
-        },
-        "component-mu3g18r3-vjj5e9": {
-          "centerX": 631.3401442307692,
-          "centerY": 680,
-          "height": 79,
-          "inkHex": "#FF6B3D",
-          "inkId": "ink",
-          "kind": "text",
-          "rotation": 0,
-          "text": "Text",
-          "typography": {
-            "faceId": "alliance",
-            "letterSpacing": 0,
-            "lineHeight": 1.1,
-            "size": 72,
-            "textCase": "none",
-            "weight": 400
-          },
-          "width": 336
-        },
-        "component-mu3g1e2a-uhrvc0": {
-          "centerX": 595,
-          "centerY": 680,
-          "height": 79,
-          "inkHex": "#FF6B3D",
-          "inkId": "ink",
-          "kind": "text",
-          "rotation": 0,
-          "text": "Text",
-          "typography": {
-            "faceId": "alliance",
-            "letterSpacing": 0,
-            "lineHeight": 1.1,
-            "size": 72,
-            "textCase": "none",
-            "weight": 400
-          },
-          "width": 336
-        },
-        "component-mu3g1ecm-95x7i5": {
-          "centerX": 611.9975611855508,
-          "centerY": 518.9550035394514,
-          "height": 79,
-          "inkHex": "#FF6B3D",
-          "inkId": "ink",
-          "kind": "text",
-          "rotation": 0,
-          "text": "Text",
-          "typography": {
-            "faceId": "alliance",
-            "letterSpacing": 0,
-            "lineHeight": 1.1,
-            "size": 72,
-            "textCase": "none",
-            "weight": 400
-          },
-          "width": 336
-        }
-      },
+      "design.components": {},
       "selectedLayer.kind": ""
     },
     "canvas": {

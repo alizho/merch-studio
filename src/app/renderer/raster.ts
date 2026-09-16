@@ -86,6 +86,26 @@ export function cloneSurface(source: Surface): Surface {
   return copy;
 }
 
+/** Parses a 3- or 6-digit hex color into 0-255 channels. */
+export function hexToRgb(
+  hex: string,
+): Readonly<{ blue: number; green: number; red: number }> {
+  const value = hex.replace("#", "");
+  const full =
+    value.length === 3
+      ? value
+          .split("")
+          .map((char) => char + char)
+          .join("")
+      : value;
+
+  return {
+    blue: Number.parseInt(full.slice(4, 6), 16) || 0,
+    green: Number.parseInt(full.slice(2, 4), 16) || 0,
+    red: Number.parseInt(full.slice(0, 2), 16) || 0,
+  };
+}
+
 /** Relative luminance, used to decide how much highlight a colorway needs. */
 export function luminanceOf(hex: string): number {
   const value = hex.replace("#", "");

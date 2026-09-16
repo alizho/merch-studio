@@ -115,9 +115,14 @@ export function resolveGestureRecord({
     };
   }
 
+  // One uniform scale, floored on the short side, so the minimum size never
+  // stretches a narrow image out of its aspect ratio.
+  const shortSide = Math.max(1, Math.min(box.width, box.height));
+  const scale = Math.max(ratio, MIN_COMPONENT_SIZE / shortSide);
+
   return {
     ...gesture.origin,
-    height: Math.max(MIN_COMPONENT_SIZE, Math.round(box.height * ratio)),
-    width: Math.max(MIN_COMPONENT_SIZE, Math.round(box.width * ratio)),
+    height: Math.max(1, Math.round(box.height * scale)),
+    width: Math.max(1, Math.round(box.width * scale)),
   };
 }

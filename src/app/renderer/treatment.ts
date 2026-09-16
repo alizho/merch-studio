@@ -20,8 +20,6 @@ import type { Treatment } from "../design/tokens";
 
 type AnyContext = OffscreenCanvasRenderingContext2D;
 
-/** Weave tile: plain-woven cotton, tight enough to read as texture not pattern. */
-const WEAVE_TILE = 6;
 /** Satin-stitch band spacing in canvas pixels. */
 const STITCH_TILE = 14;
 
@@ -31,21 +29,6 @@ function offsetMask(source: Surface, dx: number, dy: number): Surface {
   moved.ctx.drawImage(source.canvas, dx, dy);
 
   return moved;
-}
-
-function weavePattern(ctx: AnyContext): CanvasPattern | null {
-  const tile = createSurface(WEAVE_TILE, WEAVE_TILE);
-  const tileCtx = tile.ctx;
-  const half = WEAVE_TILE / 2;
-
-  tileCtx.fillStyle = "rgba(0, 0, 0, 0.16)";
-  tileCtx.fillRect(0, 0, half, half);
-  tileCtx.fillRect(half, half, half, half);
-  tileCtx.fillStyle = "rgba(255, 255, 255, 0.10)";
-  tileCtx.fillRect(half, 0, half, half);
-  tileCtx.fillRect(0, half, half, half);
-
-  return ctx.createPattern(tile.canvas, "repeat");
 }
 
 /**
@@ -99,8 +82,9 @@ function paintClippedPattern(
 }
 
 /**
- * Screen print: flat ink sitting on the surface of the cloth. The weave shows
- * through slightly because plastisol never fully hides it.
+ * Screen print: flat ink sitting on the surface of the cloth. Garment shading
+ * is applied later in canvas space, so adding another repeated texture here
+ * produces an artificial checkerboard instead of useful material detail.
  *
  * Imported artwork keeps its own colors here, because a print can carry them.
  */
@@ -114,15 +98,6 @@ function applyPrint(
   if (!preserveColor) {
     tintMask(body, inkHex);
   }
-
-  const ctx = body.ctx;
-  const weave = paintClippedPattern(mask, weavePattern(ctx));
-
-  ctx.globalCompositeOperation = "soft-light";
-  ctx.globalAlpha = 0.85;
-  ctx.drawImage(weave.canvas, 0, 0);
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = "source-over";
 
   return body;
 }
