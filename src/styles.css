@@ -1,0 +1,420 @@
+@import "tailwindcss";
+@source ".";
+@source "./toolcraft/ui";
+@source "./toolcraft/runtime";
+@import "tw-animate-css";
+@import "@/toolcraft/ui/styles.css";
+@import "@/toolcraft/runtime/styles.css";
+
+/*
+ * Infisical design system, per `design.md`. Two faces and no third: Alliance
+ * No.2 carries every UI role, JetBrains Mono carries the uppercase `label`
+ * role and tabular numerics. Both are already self-hosted in `public/fonts`
+ * for the canvas renderer, so the chrome reads them from the same files.
+ *
+ * Alliance No.2 ships Regular only here, so its face claims the 400-600 range
+ * rather than letting the browser synthesize a faux semibold.
+ */
+@font-face {
+  font-family: "Alliance No.2";
+  src: url("/fonts/AllianceNo2-Regular.otf") format("opentype");
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --spacing-field-control: 0.3125rem;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 0.875rem;
+  --text-xs-plus: 0.8125rem;
+  --text-xs-plus--line-height: 1.125rem;
+  --font-sans: "Alliance No.2", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Sharp corners are doctrine: every radius token collapses to zero. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+
+  /* Flat by doctrine: depth comes from hairlines and surface change. */
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  --shadow-lg: 0 0 #0000;
+  --shadow-xl: 0 0 #0000;
+  --shadow-2xl: 0 0 #0000;
+}
+
+/*
+ * The `dark:` variant follows the runtime theme scope rather than a static
+ * class on <html>, so the toolbar's light/dark toggle drives it.
+ */
+@custom-variant dark (&:where([data-toolcraft-theme="dark"], [data-toolcraft-theme="dark"] *));
+@custom-variant focus-visible (&:is([data-focus-visible-mode="keyboard"] *):focus-visible);
+
+/*
+ * Binary Surface Rule: void (#000000) is the page and canvas backdrop, shade
+ * (#111111) is the panel surface, and nothing sits between them. Volt
+ * (#F7FE62) is the one charged accent and carries selection only.
+ */
+:root {
+  --background: #000000;
+  --foreground: #e4e4e7;
+  --bg-foreground: var(--foreground);
+  --card: #111111;
+  --card-foreground: #e4e4e7;
+  --popover: #111111;
+  --popover-foreground: #e4e4e7;
+  --link: #e4e4e7;
+  --primary: #e4e4e7;
+  --primary-foreground: #111111;
+  --secondary: #e4e4e7;
+  --secondary-foreground: #111111;
+  --muted: #111111;
+  --muted-foreground: #a1a1aa;
+  --accent: #f7fe62;
+  --accent-foreground: #000000;
+  --inspect: #23776a;
+  --attention: #56a600;
+  --attention-foreground: #000000;
+  --destructive: #8a1208;
+  --destructive-foreground: var(--foreground);
+  --border: #2a2a2a;
+  --input: #2a2a2a;
+  --ring: #f7fe62;
+  --radius: 0px;
+  --button-radius-xs: 0px;
+  --button-radius-sm: 0px;
+  --button-radius-md: 0px;
+  --button-radius-lg: 0px;
+  color-scheme: dark;
+}
+
+/* Light: bg (#ffffff) panels over the bg-page (#f3f4f6) wash. */
+[data-toolcraft-theme="light"][data-toolcraft-theme] {
+  --background: #f3f4f6;
+  --foreground: #000000;
+  --bg-foreground: var(--foreground);
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --link: #000000;
+  --primary: #000000;
+  --primary-foreground: #ffffff;
+  --secondary: #000000;
+  --secondary-foreground: #ffffff;
+  --muted: #f3f4f6;
+  --muted-foreground: #737373;
+  --accent: #f7fe62;
+  --accent-foreground: #000000;
+  --inspect: #23776a;
+  --attention: #56a600;
+  --attention-foreground: #000000;
+  --destructive: #8a1208;
+  --destructive-foreground: #ffffff;
+  --border: #dcdcdc;
+  --input: #dcdcdc;
+  --ring: #000000;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #000000;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f3f4f6;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #dcdcdc;
+  --sidebar-ring: #000000;
+
+  /*
+   * Hairlines are opaque: a 1px line at #dcdcdc, shifting to void on hover.
+   * The runtime's translucent mixes would dissolve against these surfaces.
+   */
+  --toolcraft-custom-viz-border: #dcdcdc;
+  --toolcraft-custom-viz-border-hover: #000000;
+  --toolcraft-custom-viz-border-focus: #000000;
+  --toolcraft-custom-viz-surface: #ffffff;
+  --toolcraft-custom-viz-grid: #ececec;
+  --toolcraft-custom-viz-ink: #000000;
+}
+
+[data-toolcraft-theme="dark"][data-toolcraft-theme] {
+  --background: #000000;
+  --foreground: #e4e4e7;
+  --bg-foreground: var(--foreground);
+  --card: #111111;
+  --card-foreground: #e4e4e7;
+  --popover: #111111;
+  --popover-foreground: #e4e4e7;
+  --link: #e4e4e7;
+  --primary: #e4e4e7;
+  --primary-foreground: #111111;
+  --secondary: #e4e4e7;
+  --secondary-foreground: #111111;
+  --muted: #111111;
+  --muted-foreground: #a1a1aa;
+  --accent: #f7fe62;
+  --accent-foreground: #000000;
+  --inspect: #23776a;
+  --attention: #56a600;
+  --attention-foreground: #000000;
+  --destructive: #8a1208;
+  --destructive-foreground: #e4e4e7;
+  --border: #2a2a2a;
+  --input: #2a2a2a;
+  --ring: #f7fe62;
+  --sidebar: #111111;
+  --sidebar-foreground: #e4e4e7;
+  --sidebar-primary: #e4e4e7;
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: #1c1c1c;
+  --sidebar-accent-foreground: #e4e4e7;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #f7fe62;
+
+  --toolcraft-custom-viz-border: #2a2a2a;
+  --toolcraft-custom-viz-border-hover: #e4e4e7;
+  --toolcraft-custom-viz-border-focus: #f7fe62;
+  --toolcraft-custom-viz-surface: #111111;
+  --toolcraft-custom-viz-grid: #1c1c1c;
+  --toolcraft-custom-viz-ink: #e4e4e7;
+}
+
+/* Sharp corners, everywhere, including portalled chrome outside the scope. */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+/* Flat by doctrine: no glass, no blur on chrome. */
+[class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+}
+
+/* Panels are opaque surfaces separated by hairlines, not translucent films. */
+.floating-popup-surface {
+  border-color: var(--border);
+  background-color: var(--floating-popup-surface-background, var(--popover));
+}
+
+.floating-popup-fill {
+  background-color: var(--popover);
+}
+
+.toolcraft-panel-surface {
+  --floating-popup-surface-background: var(--popover);
+}
+
+.floating-popup-separator {
+  background-color: var(--border);
+}
+
+.floating-popup-divider {
+  border-color: var(--border);
+}
+
+/*
+ * Uppercase Restraint Rule: uppercase is only valid on JetBrains Mono, so the
+ * panel eyebrow takes the mono `label` role rather than uppercase Alliance.
+ */
+[data-slot="panel-title"] {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+::selection {
+  background: #f7fe62;
+  color: #000000;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    box-sizing: border-box;
+    outline-color: var(--ring);
+  }
+
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  min-height: 100%;
+}
+
+#root {
+  overflow: clip;
+}
+
+input,
+button {
+  font-family: inherit;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 2.75rem;
+  border: 0 solid transparent;
+  background-color: var(--border);
+  background-clip: padding-box;
+}
+
+/*
+ * Component doctrine from `design.md`. These rules land on the runtime's own
+ * `data-slot` hooks because the token layer alone cannot express them: the
+ * components paint their chrome through fixed translucent `color-mix()`
+ * percentages, which dissolve against binary surfaces. Each rule below maps
+ * to a named component token in the reference.
+ */
+
+:root {
+  --infisical-toggle-track-on: #f7fe62;
+  --infisical-toggle-knob-on: #111111;
+  --infisical-toggle-knob-off: #e4e4e7;
+}
+
+[data-toolcraft-theme="light"][data-toolcraft-theme] {
+  --infisical-toggle-track-on: #000000;
+  --infisical-toggle-knob-on: #f7fe62;
+  --infisical-toggle-knob-off: #000000;
+}
+
+[data-toolcraft-theme="dark"][data-toolcraft-theme] {
+  --infisical-toggle-track-on: #f7fe62;
+  --infisical-toggle-knob-on: #111111;
+  --infisical-toggle-knob-off: #e4e4e7;
+}
+
+/* input: transparent surface, one hairline border, no focus ring. */
+[data-slot="input"],
+[data-slot="textarea"],
+[data-slot="select-trigger"] {
+  border-color: var(--border) !important;
+  background-color: transparent !important;
+}
+
+[data-slot="input"]:not(:disabled):hover,
+[data-slot="input"]:not(:disabled):focus,
+[data-slot="textarea"]:not(:disabled):hover,
+[data-slot="textarea"]:not(:disabled):focus,
+[data-slot="select-trigger"]:not([data-disabled]):hover,
+[data-slot="select-trigger"][data-popup-open] {
+  border-color: var(--foreground) !important;
+}
+
+/* segmented: the active item is a solid inverse fill carrying surface text. */
+[data-slot="toggle-group-item"][aria-pressed="true"],
+[data-slot="toggle-group-item"][data-pressed],
+[data-slot="toggle-group-item"][data-state="on"] {
+  border-color: var(--foreground) !important;
+  background-color: var(--foreground) !important;
+  color: var(--card) !important;
+}
+
+/*
+ * toggle: hairline track with a void knob; switching on charges the knob with
+ * Volt. The hairline is an inset outline so it cannot resize the 16px track.
+ */
+[data-slot="switch"] {
+  background-color: transparent !important;
+  outline: 1px solid var(--border);
+  outline-offset: -1px;
+}
+
+[data-slot="switch"][data-checked] {
+  background-color: var(--infisical-toggle-track-on) !important;
+  outline-color: var(--infisical-toggle-track-on);
+}
+
+[data-slot="switch-thumb"] {
+  background-color: var(--infisical-toggle-knob-off) !important;
+}
+
+[data-slot="switch"][data-checked] [data-slot="switch-thumb"] {
+  background-color: var(--infisical-toggle-knob-on) !important;
+}
+
+/* checkbox: void fill when checked, Volt check stroke. */
+[data-slot="checkbox"] {
+  border-color: var(--border) !important;
+  background-color: transparent !important;
+}
+
+[data-slot="checkbox"][data-checked] {
+  color: #f7fe62 !important;
+}
+
+/* slider: a 1px hairline track under a sharp void thumb. */
+[data-slot="slider-track"] {
+  background-color: var(--border) !important;
+}
+
+/* Selection is the sanctioned Volt moment: a charged hairline, not a wash. */
+[data-slot="image-picker-option"] {
+  border-color: var(--border) !important;
+}
+
+[data-slot="image-picker-option"][data-selected="true"] {
+  outline-color: #f7fe62 !important;
+}
+
+/* button-secondary: transparent with a hairline that goes void on hover. */
+[data-slot="button"][data-variant="outline"] {
+  border-color: var(--border) !important;
+  background-color: transparent !important;
+}
+
+[data-slot="button"][data-variant="outline"]:not(:disabled):hover {
+  border-color: var(--foreground) !important;
+  color: var(--foreground) !important;
+}
+
+/* The drop target keeps its dashed affordance, on an opaque hairline. */
+[data-slot="file-upload-drop-target"] {
+  border-color: var(--border) !important;
+}

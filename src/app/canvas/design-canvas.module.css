@@ -1,0 +1,13 @@
+/** Product geometry: the canvas fills the runtime's product scene box. */
+
+.surface {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

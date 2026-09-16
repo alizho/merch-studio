@@ -1,0 +1,43 @@
+/**
+ * Layout for the colorway swatch rows.
+ *
+ * Only geometry lives here. Every surface, border, and selected state belongs
+ * to the Toolcraft toggle primitives; these classes just make each target a
+ * small square and let a long row wrap inside the panel.
+ */
+
+.row {
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.swatch {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  padding: 3px;
+}
+
+.chip {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/**
+ * The custom target keeps the rainbow visible as a ring while the chosen dye
+ * fills the middle, so the square reads as "custom color" whether or not a
+ * custom color is active.
+ */
+.custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.customCenter {
+  width: 10px;
+  height: 10px;
+}
