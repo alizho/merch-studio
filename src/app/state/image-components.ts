@@ -21,6 +21,7 @@ import {
   DEFAULT_CUSTOM_INK_HEX,
   DEFAULT_EFFECT_AMOUNT,
   DEFAULT_INK_COLORWAY_ID,
+  type GarmentView,
   type Treatment,
 } from "../design/tokens";
 import type { ComponentMap, ComponentRecord } from "./components";
@@ -160,6 +161,7 @@ export function createImageComponent(
   size: ImageSize,
   placement: PlacementArea,
   treatment: Treatment,
+  view: GarmentView,
 ): ComponentRecord {
   const frame = getImportedImagePlacement(size, placement);
 
@@ -182,6 +184,7 @@ export function createImageComponent(
     resourceRef: asset.resourceRef,
     rotation: 0,
     treatment,
+    view,
     width: frame.width,
   };
 }
