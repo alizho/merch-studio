@@ -255,7 +255,7 @@ export function LayersPanel({
   const panelSurface = (
     <PanelSurface
       className={cn(
-        "pointer-events-auto flex max-h-[calc(100dvh-1.25rem)] w-[240px] flex-col overflow-hidden rounded-lg p-0",
+        "pointer-events-auto flex max-h-[calc(var(--toolcraft-workspace-height,100dvh)-1.25rem)] w-[240px] flex-col overflow-hidden rounded-lg p-0",
         className,
       )}
       data-toolcraft-layers-panel=""

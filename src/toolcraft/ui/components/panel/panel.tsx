@@ -62,7 +62,7 @@ export function Panel({
   return (
     <PanelSurface
       className={cn(
-        "pointer-events-auto flex max-h-[calc(100dvh-1.25rem)] flex-col overflow-hidden rounded-lg p-0 w-[300px]",
+        "pointer-events-auto flex max-h-[calc(var(--toolcraft-workspace-height,100dvh)-1.25rem)] flex-col overflow-hidden rounded-lg p-0 w-[300px]",
         className,
       )}
       data-panel-id="properties"

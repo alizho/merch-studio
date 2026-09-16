@@ -161,7 +161,7 @@ export function createImageComponent(
   size: ImageSize,
   placement: PlacementArea,
   treatment: Treatment,
-  view: GarmentView,
+  view: GarmentView = "front",
 ): ComponentRecord {
   const frame = getImportedImagePlacement(size, placement);
 
@@ -210,6 +210,7 @@ export function reconcileImageComponents({
   placement,
   restoredLayerIds,
   treatment,
+  view = "front",
 }: {
   components: ComponentMap;
   decoded: ReadonlyMap<string, DecodedImageSize>;
@@ -218,6 +219,7 @@ export function reconcileImageComponents({
   placement: PlacementArea;
   restoredLayerIds: ReadonlySet<string>;
   treatment: Treatment;
+  view?: GarmentView;
 }): { components: ComponentMap; placedLayerIds: readonly string[] } | null {
   let next: Record<string, ComponentRecord> | null = null;
   const placedLayerIds: string[] = [];
@@ -239,6 +241,7 @@ export function reconcileImageComponents({
         trusted ?? orientSize(asset.sourceSize, asset.transform),
         placement,
         treatment,
+        view,
       );
       placedLayerIds.push(asset.layerId);
     } else {

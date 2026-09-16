@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { readComponentRecord, readComponents, TARGETS } from "./components";
+import { componentIdsForView, readComponentRecord, readComponents, TARGETS } from "./components";
 
 it("hydrates a missing finish from the legacy garment treatment", () => {
   const record = readComponentRecord(
@@ -41,4 +41,19 @@ it("keeps an authored layer finish instead of the legacy garment value", () => {
   });
 
   expect(components["layer-a"]?.treatment).toBe("print");
+});
+
+
+it("keeps front and back artwork isolated through saved records and visible ordering", () => {
+  const components = readComponents({
+    [TARGETS.components]: JSON.parse(JSON.stringify({
+      legacy: { kind: "text", text: "OLD" },
+      front: { kind: "text", text: "FRONT", view: "front" },
+      back: { kind: "text", text: "BACK", view: "back" },
+    })),
+  });
+  expect(components.legacy.view).toBe("front");
+  expect(componentIdsForView(components, ["back", "front", "legacy", "missing"], "front")).toEqual(["front", "legacy"]);
+  expect(componentIdsForView(components, ["back", "front", "legacy"], "back")).toEqual(["back"]);
+  expect(componentIdsForView(components, ["front"], "back")).toEqual([]);
 });

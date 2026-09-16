@@ -60,7 +60,12 @@ function shouldIgnorePanelDrag(event: React.PointerEvent<HTMLElement>): boolean 
   return shouldIgnorePanelTarget(event.target, event.currentTarget);
 }
 
-function getPanelVisualViewport(): PanelViewport {
+function getPanelVisualViewport(panel?: HTMLElement): PanelViewport {
+  const workspace = panel?.closest("[data-toolcraft-workspace]");
+  if (workspace) {
+    const rect = workspace.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, offsetLeft: rect.left, offsetTop: rect.top };
+  }
   const visualViewport = window.visualViewport;
 
   if (visualViewport) {
@@ -135,11 +140,6 @@ function usePanelSnapControls({
   };
 
   const handleDragEnd = (info: PanInfo): void => {
-    if (!snap || snap.edges.length === 0) {
-      publishCurrentPosition();
-      return;
-    }
-
     const panel = panelRef.current;
 
     if (!panel) {
@@ -149,27 +149,44 @@ function usePanelSnapControls({
 
     const rect = panel.getBoundingClientRect();
     const offset = { x: x.get(), y: y.get() };
-    const target = resolvePanelSnapPlacement({
-      dimensions: { height: rect.height, width: rect.width },
-      edges: snap.edges,
-      margin: snap.margin,
-      position: { x: rect.left, y: rect.top },
-      velocity: { x: info.velocity.x / 1000, y: info.velocity.y / 1000 },
-      viewport: getPanelVisualViewport(),
-      zone: snap.zone,
-    });
+    const viewport = getPanelVisualViewport(panel);
+    const dimensions = { height: rect.height, width: rect.width };
+    const origin = { x: rect.left - offset.x, y: rect.top - offset.y };
 
-    if (!target) {
-      publishCurrentPosition();
+    const target =
+      snap && snap.edges.length > 0
+        ? resolvePanelSnapPlacement({
+            dimensions,
+            edges: snap.edges,
+            margin: snap.margin,
+            position: { x: rect.left, y: rect.top },
+            velocity: { x: info.velocity.x / 1000, y: info.velocity.y / 1000 },
+            viewport,
+            zone: snap.zone,
+          })
+        : null;
+
+    if (target) {
+      const nextPosition = {
+        x: target.offset.x - (rect.left - offset.x),
+        y: target.offset.y - (rect.top - offset.y),
+      };
+
+      setPlacement({ offset: nextPosition, snapEdge: target.snapEdge });
       return;
     }
 
-    const nextPosition = {
-      x: target.offset.x - (rect.left - offset.x),
-      y: target.offset.y - (rect.top - offset.y),
-    };
+    // Not close enough to a snap edge to dock: still keep the panel fully
+    // inside the viewport, so a slow drag can never strand it out of bounds.
+    const clamped = clampPanelPlacementToViewport({
+      dimensions,
+      margin: snap?.margin,
+      origin,
+      placement: { offset, snapEdge: undefined },
+      viewport,
+    });
 
-    setPlacement({ offset: nextPosition, snapEdge: target.snapEdge });
+    setPlacement({ offset: clamped.offset, snapEdge: clamped.snapEdge });
   };
 
   const resetPosition = (): void => {
@@ -207,7 +224,7 @@ function usePanelSnapControls({
           y: rect.top - currentPlacement.offset.y,
         },
         placement: currentPlacement,
-        viewport: getPanelVisualViewport(),
+        viewport: getPanelVisualViewport(panel),
       });
 
       if (

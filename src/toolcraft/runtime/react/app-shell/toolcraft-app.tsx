@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+import frameStyles from "./workspace-frame.module.css";
+import { VersionsProvider } from "../versions/versions-context";
+import { VersionsPanel } from "../versions/versions-panel";
 
 import type { ResolvedToolcraftAppSchema } from "../../schema/resolved-app-schema";
 import type { AnyToolcraftRendererPipelineRegistration } from "../../rendering";
@@ -91,6 +94,7 @@ function ToolcraftAppContent({
       className={cn(
         "relative min-h-[640px] w-full overflow-hidden bg-[color:var(--background)]",
         className,
+        frameStyles.frame,
       )}
       data-slot="toolcraft-runtime-app"
       data-toolcraft-model-renderer-status={modelRendererStatus}
@@ -105,30 +109,37 @@ function ToolcraftAppContent({
         minWidth: toolcraftMinAppWidthPx,
       }}
     >
-      {surfaces.canvas.enabled ? (
-        <CanvasShell
-          infiniteCanvasContent={infiniteCanvasContent}
-          renderDefaultMedia={renderDefaultCanvasMedia}
-        >
-          {canvasContent}
-        </CanvasShell>
-      ) : null}
-      {modulePanels.filter(({ binding }) => binding.slot === "before-controls")
-        .map(panel => <React.Fragment key={panel.moduleId}>{panel.binding.render()}</React.Fragment>)}
-      {surfaces.panels.controls?.enabled ? (
-        <ControlsPanel
-          controlRenderers={controlRenderers}
-          onPanelAction={onPanelAction}
-          panelPlacement="floating"
-          sceneExport={sceneExport}
-        />
-      ) : null}
-      {modulePanels.filter(({ binding }) => binding.slot === "after-controls")
-        .map(panel => <React.Fragment key={panel.moduleId}>{panel.binding.render()}</React.Fragment>)}
-      {surfaces.panels.toolbar.enabled ? (
-        <ToolbarPanel panelPlacement="floating" />
-      ) : null}
-      <ToolcraftPersistenceConflictNotice />
+      <header className={frameStyles.header} aria-label="Merch Studio">
+        <span className={frameStyles.logo} role="img" aria-label="Infisical" />
+        <span className={frameStyles.title}>Merch Studio</span>
+      </header>
+      <div className={frameStyles.workspace} data-toolcraft-workspace="">
+        {surfaces.canvas.enabled ? (
+          <CanvasShell
+            infiniteCanvasContent={infiniteCanvasContent}
+            renderDefaultMedia={renderDefaultCanvasMedia}
+          >
+            {canvasContent}
+          </CanvasShell>
+        ) : null}
+        {modulePanels.filter(({ binding }) => binding.slot === "before-controls")
+          .map(panel => <React.Fragment key={panel.moduleId}>{panel.binding.render()}</React.Fragment>)}
+        {surfaces.panels.controls?.enabled ? (
+          <ControlsPanel
+            controlRenderers={controlRenderers}
+            onPanelAction={onPanelAction}
+            panelPlacement="floating"
+            sceneExport={sceneExport}
+          />
+        ) : null}
+        {modulePanels.filter(({ binding }) => binding.slot === "after-controls")
+          .map(panel => <React.Fragment key={panel.moduleId}>{panel.binding.render()}</React.Fragment>)}
+        {surfaces.panels.toolbar.enabled ? (
+          <ToolbarPanel panelPlacement="floating" />
+        ) : null}
+        <VersionsPanel />
+        <ToolcraftPersistenceConflictNotice />
+      </div>
     </div>
   );
 }
@@ -200,14 +211,16 @@ export function ToolcraftApp({
       rendererPipelineRegistration={rendererPipelineRegistration}
       schema={schema}
     >
-      <ToolcraftProductSceneBoundsBoundary boundsProvider={sceneBoundsProvider}>
-        <ToolcraftAppContent
-          {...props}
-          canvasContent={canvasContent}
-          renderDefaultCanvasMedia={renderDefaultCanvasMedia}
-          sceneExport={sceneExport}
-        />
-      </ToolcraftProductSceneBoundsBoundary>
+      <VersionsProvider>
+        <ToolcraftProductSceneBoundsBoundary boundsProvider={sceneBoundsProvider}>
+          <ToolcraftAppContent
+            {...props}
+            canvasContent={canvasContent}
+            renderDefaultCanvasMedia={renderDefaultCanvasMedia}
+            sceneExport={sceneExport}
+          />
+        </ToolcraftProductSceneBoundsBoundary>
+      </VersionsProvider>
     </ToolcraftRoot>
   );
 }

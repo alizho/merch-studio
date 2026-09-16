@@ -6,6 +6,7 @@ import type { ToolcraftDefaultResourceUpload } from "./default-resource-capture"
 
 export type ToolcraftSourceAssetCoordinator = {
   cancelTarget: (target: string) => void;
+  restoreVersionResources?: (uploads: readonly ToolcraftDefaultResourceUpload[]) => Promise<() => void>;
   captureDefaultResources?: (assets: readonly ToolcraftMediaAsset[]) => Promise<readonly ToolcraftDefaultResourceUpload[]>;
   clearPresentationFeedback: (target: string) => void;
   dispose: () => Promise<void>;

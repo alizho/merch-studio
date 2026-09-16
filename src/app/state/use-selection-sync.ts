@@ -95,6 +95,7 @@ export function useSelectionSync({
     );
 
     const garment = resolveGarment(values[TARGETS.garmentType]);
+    const view = resolveGarmentView(values[TARGETS.garmentView]);
     const reconciled = reconcileImageComponents({
       components,
       decoded: importedImages,
@@ -104,6 +105,7 @@ export function useSelectionSync({
         garment.placement[resolveGarmentView(values[TARGETS.garmentView])],
       restoredLayerIds: restoredLayerIdsRef.current,
       treatment: resolveTreatment(values[TARGETS.selectedTreatment]),
+      view,
     });
 
     if (reconciled) {
@@ -141,6 +143,25 @@ export function useSelectionSync({
 
       lastRef.current = { layerId: selectedLayerId, panel };
     };
+
+    // A deliberate layer selection navigates to its face. Merely flipping the
+    // garment never carries the old face's panel edits onto an invisible record.
+    if (record && resolveGarmentView(record.view) !== view) {
+      if (lastRef.current && lastRef.current.layerId !== selectedLayerId) {
+        dispatch({
+          type: "controls.setValue",
+          target: TARGETS.garmentView,
+          value: resolveGarmentView(record.view),
+          history: "skip",
+        });
+      } else {
+        lastRef.current = { layerId: selectedLayerId, panel: { ...panelNow, kind: "" } };
+        if (panelNow.kind !== "") {
+          dispatch({ type: "controls.setValue", target: TARGETS.selectedKind, value: "", history: "skip" });
+        }
+      }
+      return;
+    }
 
     // Selection moved, so the panel adopts the newly selected component.
     if (lastRef.current?.layerId !== selectedLayerId) {

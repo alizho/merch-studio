@@ -223,7 +223,7 @@ export const appProductReadiness: ToolcraftProductReadiness = {
   viewInteraction: {
     mode: "non-spatial",
     reason:
-      "The garment is a flat mockup drawn with Canvas 2D. There is no three-dimensional scene or model to orbit.",
+      "The artwork editor stays planar. Front/back switching and pointer proximity add transient CSS depth to two Canvas 2D faces; there is no editable model or camera pose.",
   },
 };
 
@@ -246,12 +246,16 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   },
   {
     automated: true,
-    automatedTestName: "resolves front and back views to different artwork",
-    browser: false,
+    automatedTestName: "keeps front and back artwork isolated through saved records and visible ordering",
+    browser: {
+      budget: "standard",
+      file: "e2e/product-garment-flip.spec.ts",
+      testName: "browser: garment flips between retained faces and tilts on hover",
+    },
     componentType: "segmented",
     evidence: "product-output",
     expectedObservable:
-      "Choosing Back draws the back artwork and lands new artwork on the back panel.",
+      "Choosing Back rotates the retained plane to upright back artwork; Front returns it. Pointer proximity tilts the garment subtly, leaving artwork editing planar; reduced motion disables both movements. Each face renders only its own assigned elements, and switching sides clears hidden selection.",
     fixture: "garment art for both views",
     id: "garment.view",
     kind: "control",

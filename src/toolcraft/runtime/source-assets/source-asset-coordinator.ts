@@ -1,3 +1,4 @@
+import { bytesToHex, sha256 } from "../model-import/canonical/sha256";
 import type { ToolcraftCommand, ToolcraftState } from "../state/types";
 import { createToolcraftSourceAssetCleanupManager } from "./source-asset-cleanup-manager";
 import {
@@ -87,6 +88,25 @@ export function createToolcraftSourceAssetRuntime<Services extends object>({
   });
 
   const coordinator: Omit<ToolcraftSourceAssetCoordinator, "hydrateModels" | "repairModel"> = {
+    restoreVersionResources: async uploads => {
+      if (jobManager.isDisposed() || jobManager.getActiveJobs().length) throw new Error("Wait for file operations to finish before restoring.");
+      const release = uploads.map(({ resource }) => coordinator.retainResourceRef!(resource.ref));
+      const dispose = () => release.forEach(fn => fn());
+      let lease;
+      try {
+        lease = await repository.beginLease(`version-${crypto.randomUUID()}`);
+        for (const { bytes, resource } of uploads) {
+          if (bytes.byteLength !== resource.byteLength || bytesToHex(sha256(bytes)) !== resource.sha256) throw new Error("Saved artwork is corrupt. Your current design has not been changed.");
+          await lease.put(resource.ref, bytes, resource);
+        }
+        await lease.commit();
+        return dispose;
+      } catch (error) {
+        await lease?.rollback();
+        dispose();
+        throw error;
+      }
+    },
     captureDefaultResources: assets => {
       if (jobManager.isDisposed() || jobManager.getActiveJobs().length > 0) {
         return Promise.reject(new Error("Wait for file operations to finish before saving defaults."));

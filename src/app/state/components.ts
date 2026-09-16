@@ -21,6 +21,8 @@ import {
   MIN_EFFECT_AMOUNT,
   readHexColor,
   resolveTreatment,
+  resolveGarmentView,
+  type GarmentView,
   type Treatment,
   type Typography,
 } from "../design/tokens";
@@ -62,6 +64,8 @@ export function isComponentKind(value: unknown): value is ComponentKind {
 }
 
 export type ComponentRecord = {
+  /** Owning garment face; legacy records without a side belong to the front. */
+  view?: GarmentView;
   /** Removes a flat, edge-connected backdrop from imported artwork. */
   backgroundRemoval: boolean;
   /** Center in canvas coordinates; rotation is applied about this point. */
@@ -159,6 +163,7 @@ export function readComponentRecord(
   const kind = readKind(value.kind);
 
   return {
+    view: resolveGarmentView(value.view),
     backgroundRemoval: kind === "image" && value.backgroundRemoval === true,
     centerX: readNumber(value.centerX, 0),
     centerY: readNumber(value.centerY, 0),
@@ -252,4 +257,15 @@ export function componentLabel(record: ComponentRecord): string {
   }
 
   return "Artwork";
+}
+
+/** Shared by both preview faces, canvas hit targets, and image export. */
+export function componentIdsForView(
+  components: ComponentMap,
+  layerIds: readonly string[],
+  view: GarmentView,
+): string[] {
+  return layerIds.filter((id) =>
+    Boolean(components[id]) && resolveGarmentView(components[id].view) === view,
+  );
 }

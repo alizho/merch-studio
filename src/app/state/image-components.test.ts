@@ -279,3 +279,18 @@ describe("raisePlacedLayers", () => {
     expect(raisePlacedLayers(layers, ["text"])).toBeNull();
   });
 });
+
+it("keeps an uploaded image on its original face when switching views", () => {
+  const asset = imageAsset({ id: "back-image", layerId: "back-layer" });
+  const inputs = {
+    decoded: new Map(),
+    layerIds: new Set([asset.layerId]),
+    mediaAssets: [asset],
+    placement: printArea,
+    restoredLayerIds: new Set<string>(),
+    treatment: "print" as const,
+  };
+  const placed = reconcileImageComponents({ ...inputs, components: {}, view: "back" })!;
+  expect(placed.components[asset.layerId].view).toBe("back");
+  expect(reconcileImageComponents({ ...inputs, components: placed.components, view: "front" })).toBeNull();
+});

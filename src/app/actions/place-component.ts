@@ -107,6 +107,7 @@ export function placeMark(
     dispatch,
     values,
     {
+      view: resolveGarmentView(values[TARGETS.garmentView]),
       backgroundRemoval: false,
       centerX: placement.x + placement.width / 2,
       centerY: placement.y + placement.height / 2,
@@ -141,6 +142,7 @@ export function placeText(
     dispatch,
     values,
     {
+      view: resolveGarmentView(values[TARGETS.garmentView]),
       backgroundRemoval: false,
       centerX: placement.x + placement.width / 2,
       centerY: placement.y + placement.height / 2,

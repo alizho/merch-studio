@@ -23,6 +23,7 @@ export type ToolcraftTransientCommand = Extract<
 export type ToolcraftTransientLane = "playback" | "viewport";
 
 export type ToolcraftExternalStore = {
+  replaceWorkspace: (next: ToolcraftState) => void;
   commitTransient: (lane?: ToolcraftTransientLane) => void;
   dispatch: (command: ToolcraftCommand) => void;
   dispatchTransient: (command: ToolcraftTransientCommand) => void;
@@ -391,6 +392,15 @@ export function createToolcraftExternalStore(
   };
 
   return {
+    replaceWorkspace: (next) => {
+      if (next.schema !== committedState.schema) throw new Error("Cannot restore a different application schema.");
+      const previous = effectiveState;
+      playbackTimeSeconds = undefined;
+      viewport = undefined;
+      committedState = next;
+      effectiveState = next;
+      emit(previous);
+    },
     commitTransient,
     dispatch,
     dispatchTransient,

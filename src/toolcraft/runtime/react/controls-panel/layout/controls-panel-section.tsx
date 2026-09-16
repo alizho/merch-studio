@@ -48,6 +48,32 @@ import {
   isColorOnlySection,
 } from "./controls-panel-layout";
 
+const controlsPanelSectionIconBySectionId: Record<string, string> = {
+  "runtime.setup": "/icons/settings.png",
+  garment: "/icons/garment.png",
+  components: "/icons/components.png",
+  component: "/icons/selected.png",
+  "runtime.image-export": "/icons/export.png",
+};
+
+function renderControlsPanelSectionTitle(
+  section: ResolvedToolcraftControlSectionSchema,
+  title: React.ReactNode,
+): React.ReactNode {
+  const iconSrc = controlsPanelSectionIconBySectionId[section.id];
+
+  if (!iconSrc) {
+    return title;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <img alt="" aria-hidden="true" className="size-3.5 shrink-0" src={iconSrc} />
+      {title}
+    </span>
+  );
+}
+
 export type ControlsPanelSectionGroupsArgs = {
   controlRenderers?: ToolcraftControlRendererMap;
   dispatch: React.Dispatch<ToolcraftCommand>;
@@ -316,7 +342,11 @@ export const ControlsPanelSection = React.memo(function ControlsPanelSection({
         onCollapsedChange(sectionCollapseKey, nextCollapsed);
       }}
       spacing={isDefaultsSection ? "technical" : "default"}
-      title={renderedSectionTitle}
+      title={
+        renderedSectionTitle !== undefined
+          ? renderControlsPanelSectionTitle(section, renderedSectionTitle)
+          : renderedSectionTitle
+      }
     >
       {getControlsPanelSectionGroups({
         controlRenderers,

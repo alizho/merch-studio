@@ -35,7 +35,7 @@ import {
   luminanceOf,
   type Surface,
 } from "./raster";
-import type { ComponentMap, ComponentRecord } from "../state/components";
+import { componentIdsForView, type ComponentMap, type ComponentRecord } from "../state/components";
 
 type AnyContext =
   | CanvasRenderingContext2D
@@ -280,9 +280,7 @@ export function drawDesign(
 
   target.drawImage(garment.canvas, 0, 0);
 
-  const visible = scene.layerIds.filter((layerId) =>
-    Boolean(scene.components[layerId]),
-  );
+  const visible = componentIdsForView(scene.components, scene.layerIds, scene.view);
 
   if (visible.length === 0) {
     return;

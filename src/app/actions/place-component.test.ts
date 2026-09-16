@@ -88,3 +88,15 @@ it("inherits the selected layer finish onto a newly placed mark", () => {
 
   expect(placedRecord(commands).treatment).toBe("embroidery");
 });
+
+
+it("assigns new marks and text to the garment side active at placement", () => {
+  for (const view of ["front", "back"]) {
+    for (const place of [placeMark, placeText]) {
+      const commands = dispatchedCommands((dispatch) => place(dispatch, {
+        ...emptyValues(), [TARGETS.garmentView]: view,
+      }));
+      expect(placedRecord(commands).view).toBe(view);
+    }
+  }
+});

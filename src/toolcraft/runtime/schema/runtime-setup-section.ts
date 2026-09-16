@@ -380,6 +380,8 @@ function createWorkspaceBackgroundControl(): ToolcraftControlSchema {
     options: [
       { label: "Blanc", value: "blanc" },
       { label: "Dots", value: "dots" },
+      { label: "Dashed", value: "dashed" },
+      { label: "Ticks", value: "ticks" },
     ],
     target: toolcraftCanvasWorkspaceBackgroundTarget,
     type: "select",

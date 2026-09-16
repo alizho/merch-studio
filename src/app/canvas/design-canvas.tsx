@@ -23,9 +23,10 @@ import {
   type SceneResources,
 } from "../renderer/compose";
 import { Handles } from "./handles";
+import { useGarmentTilt } from "./use-garment-tilt";
 import { loadProductFaces } from "../design/fonts";
-import { readScene, sceneGarmentSources } from "../state/scene";
-import { TARGETS, withComponent, type ComponentRecord } from "../state/components";
+import { readScene } from "../state/scene";
+import { TARGETS, componentIdsForView, withComponent, type ComponentRecord } from "../state/components";
 import { useImages } from "../renderer/image-cache";
 import { useImportedImages } from "../renderer/imported-images";
 import { measureContext } from "../renderer/measure";
@@ -89,9 +90,13 @@ export function DesignCanvas(): React.JSX.Element | null {
     () => readScene({ layers, values }),
     [layers, values],
   );
-  const garmentImages = useImages(sceneGarmentSources(scene));
+  const garmentImages = useImages(Object.values(scene.garment.sources));
 
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const frontRef = React.useRef<HTMLCanvasElement | null>(null);
+  const backRef = React.useRef<HTMLCanvasElement | null>(null);
+  const { surfaceRef, tiltRef } = useGarmentTilt(
+    Boolean(visibleSelectedLayerId(selectedLayerId, values[TARGETS.selectedKind])),
+  );
 
   const measure = React.useCallback(
     (record: ComponentRecord) => measureComponent(measureContext(), record),
@@ -99,20 +104,19 @@ export function DesignCanvas(): React.JSX.Element | null {
   );
 
   React.useEffect(() => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-
-    if (!canvas || !context) {
-      return;
-    }
-
     const resources: SceneResources = {
       garments: garmentImages,
       media: importedImages,
     };
-
-    context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    drawDesign(context, scene, resources);
+    for (const [view, canvas] of [
+      ["front", frontRef.current],
+      ["back", backRef.current],
+    ] as const) {
+      const context = canvas?.getContext("2d");
+      if (!context) continue;
+      context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      drawDesign(context, { ...scene, view }, resources);
+    }
   }, [facesReady, garmentImages, importedImages, scene]);
 
   const handleComponentChange = React.useCallback(
@@ -167,8 +171,9 @@ export function DesignCanvas(): React.JSX.Element | null {
     });
   }, [dispatch, values]);
 
+  const visibleLayerIds = componentIdsForView(scene.components, scene.layerIds, scene.view);
   const editingLayerId = visibleSelectedLayerId(
-    selectedLayerId,
+    selectedLayerId && visibleLayerIds.includes(selectedLayerId) ? selectedLayerId : null,
     values[TARGETS.selectedKind],
   );
 
@@ -220,18 +225,32 @@ export function DesignCanvas(): React.JSX.Element | null {
     <div
       className={styles.surface}
       data-merch-design-surface=""
+      ref={surfaceRef}
       data-toolcraft-product-output=""
     >
-      <canvas
-        className={styles.canvas}
-        data-merch-design-canvas=""
-        height={CANVAS_HEIGHT}
-        ref={canvasRef}
-        width={CANVAS_WIDTH}
-      />
+      <div className={styles.tilt} ref={tiltRef} data-merch-tilt="">
+        <div
+          className={styles.plane}
+          data-merch-plane={scene.view}
+          style={{ transform: `rotateY(${scene.view === "back" ? 180 : 0}deg)` }}
+        >
+          {(["front", "back"] as const).map((view) => (
+            <canvas
+              key={view}
+              aria-hidden={view !== scene.view}
+              className={`${styles.canvas} ${view === "back" ? styles.back : styles.front}`}
+              data-merch-face={view}
+              data-merch-design-canvas={view === scene.view ? "" : undefined}
+              height={CANVAS_HEIGHT}
+              ref={view === "front" ? frontRef : backRef}
+              width={CANVAS_WIDTH}
+            />
+          ))}
+        </div>
+      </div>
       <Handles
         components={scene.components}
-        layerIds={scene.layerIds}
+        layerIds={visibleLayerIds}
         measure={measure}
         onChange={handleComponentChange}
         onDelete={handleDelete}

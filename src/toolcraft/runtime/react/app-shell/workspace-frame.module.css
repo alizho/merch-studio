@@ -1,0 +1,43 @@
+.frame {
+  background: var(--card);
+}
+
+.header {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 18px;
+  color: var(--foreground);
+}
+
+.logo {
+  display: block;
+  flex: 0 0 128px;
+  width: 128px;
+  height: 20px;
+  background-color: currentColor;
+  mask: url('/full_logo_black.svg') center / contain no-repeat;
+}
+
+.title {
+  color: var(--muted-foreground);
+  font-family: "Alliance No.2", system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 22px;
+  letter-spacing: -0.06em;
+  transform: translateY(2px);
+  white-space: nowrap;
+}
+
+.workspace {
+  --toolcraft-workspace-height: calc(100dvh - 56px);
+  position: absolute;
+  inset: 48px 8px 8px;
+  overflow: hidden;
+  outline: 1px solid var(--border);
+  background: var(--background);
+}

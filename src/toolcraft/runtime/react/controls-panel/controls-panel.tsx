@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Panel, type ControlChangeMeta } from "@/toolcraft/ui";
 import { toolcraftRuntimeDefaultsSectionId } from "../../schema/runtime-defaults-section";
-import { useToolcraftDefaultsAuthoring } from "../app-shell/toolcraft-defaults-authoring";
+import { useVersions } from "../versions/versions-context";
 
 import type {
   ResolvedToolcraftControlSectionSchema,
@@ -200,7 +200,7 @@ export function ControlsPanel({
   const dispatch = useToolcraftDispatch();
   const store = useToolcraftStore();
   const theme = React.useContext(ToolcraftThemeContext);
-  const defaultsAuthoring = useToolcraftDefaultsAuthoring();
+  const versions = useVersions();
   const contentRef = useControlsPanelScroll();
   const schema = store.getCommittedState().schema;
   const controlsPanel = schema.panels.controls;
@@ -282,7 +282,7 @@ export function ControlsPanel({
   const placement = panelPlacement ?? (framed ? "frame" : "surface");
   const renderedSections = selection.visibleSections
     .filter(({ section }) =>
-      section.id !== toolcraftRuntimeDefaultsSectionId || defaultsAuthoring !== null,
+      section.id !== toolcraftRuntimeDefaultsSectionId || versions !== null,
     )
     .map(({ entries, section }) => ({
       entries,

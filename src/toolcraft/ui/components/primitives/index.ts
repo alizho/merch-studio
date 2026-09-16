@@ -3,7 +3,9 @@
 export * from "./animated-loader";
 export { Anchor } from "./anchor";
 export { Button, buttonVariants } from "./button";
+export { CanvasDashedGridPattern } from "./canvas-dashed-grid-pattern";
 export { CanvasDotPattern } from "./canvas-dot-pattern";
+export { CanvasTicksGridPattern } from "./canvas-ticks-grid-pattern";
 export {
   ButtonGroup,
   ButtonGroupSeparator,
