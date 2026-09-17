@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { componentCorners, TOP_RIGHT_CORNER_INDEX } from "./geometry";
 import { isComponentKind } from "../state/components";
 import { selectionChromeMetrics } from "./selection-chrome";
 import {
@@ -66,6 +67,18 @@ describe("canvas selection chrome", () => {
         metrics.dash.split(" ").map((value) => Number(value) * scale),
       ).toEqual([8, 6]);
     }
+  });
+
+  it("places delete on the top-right corner instead of a fourth resize knob", () => {
+    const corners = componentCorners(
+      { centerX: 100, centerY: 80, rotation: 0 },
+      { height: 20, width: 40 },
+    );
+
+    expect(corners[TOP_RIGHT_CORNER_INDEX]).toEqual({ x: 120, y: 70 });
+    expect(
+      corners.filter((_, index) => index !== TOP_RIGHT_CORNER_INDEX),
+    ).toHaveLength(3);
   });
 
   it("clears canvas selection chrome with Enter or an empty-canvas click", () => {

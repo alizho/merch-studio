@@ -33,8 +33,9 @@ export function rotatePoint(point: Point, degrees: number): Point {
 }
 
 /** Corner order: top-left, top-right, bottom-right, bottom-left. */
+export const TOP_RIGHT_CORNER_INDEX = 1;
 export function componentCorners(
-  record: ComponentRecord,
+  record: Pick<ComponentRecord, "centerX" | "centerY" | "rotation">,
   box: Box,
 ): readonly Point[] {
   const halfWidth = box.width / 2;

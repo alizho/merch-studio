@@ -4,7 +4,7 @@
 
 Mode: product
 
-Active change: panel-move-grip-muted
+Active change: ascii-density
 
 This is a merch design studio. Later entries stay compact. Detailed requests and results belong in `docs/agent-journal/changes`; text command attempts live in `.toolcraft/journal/runs`.
 
@@ -295,3 +295,53 @@ Protected receipts own initial/performance proof. Later edits record focused che
 - Verification tier: Tier 1
 - Run: embedded-browser both themes; computed fill `rgb(115, 115, 115)` light, `rgb(161, 161, 170)` dark.
 - Skip: feature acceptance, delivery, and performance; chrome color only.
+
+### Mark effects and flatten text
+
+- Entry type: focused later edit.
+- Change ID: mark-effects-flatten-text
+- Request: image library components should be affected by effects; add ability to flatten text so it can go through the same treatment for effects as other images.
+- Changed owner: `src/app` schema, Selected Flatten action, artwork/compose effects path, flatten command.
+- Result: Pixelate, Recolor, and ASCII apply to selected library marks (rasterized only while an effect is on). Selected type has Flatten, which bakes glyphs to pixels on the same layer so Effects apply and type controls hide.
+- Verification tier: Tier 2
+- Reason: schema applicability, selected-entity command, and renderer effect path.
+- Run: unit tests `flattens selected text into an image component for effects` and `keeps effect toggles on library marks`. Embedded browser: Pixelate on a selected Logomark; Flatten on Text (layer stays, handle becomes Artwork, type controls hide, Effects appear); Pixelate on the flattened layer.
+- Skip: `test:feature` Playwright preflight fails on sealed vite-node bins in this workspace (same as prior later edits); no measured performance.
+- Risks: flattened PNG data URLs persist in the values slice rather than IndexedDB.
+
+### Pixelate 1-bit dither
+
+- Entry type: focused later edit.
+- Change ID: pixelate-dither-modes
+- Request: refactor the pixelate effect so its more like dithering (no in between colors, just 0 and 1); add dither modes Bayer, Floyd-Steinberg (F-S), and random.
+- Changed owner: `src/app/renderer/image-effects.ts`, Effects schema Dither segmented, component `effectDither`.
+- Result: Pixelate downsamples then snaps every cell to effect ink or empty. Bayer, F-S, and Random appear while Pixelate is on. Detail remains cell size.
+- Verification tier: Tier 3
+- Reason: custom raster effect plus a new finite selector on selected-entity Effects.
+- Run: unit tests `dithers selected artwork to ink or empty cells` and `keeps effect toggles on library marks`. Embedded browser: Pixelate on a Logomark with Bayer, F-S, and Random.
+- Skip: `test:feature` Playwright preflight still blocked in this workspace; no measured performance.
+- Risks: Floyd–Steinberg walks the downsampled grid, so coarse Detail values stay blocky by design.
+
+### Delete replaces top-right resize knob
+
+- Entry type: focused later edit.
+- Change ID: delete-replaces-top-right-knob
+- Request: i want the top right x button to be replacing the top right knob of the four selection buttons
+- Changed owner: `src/app/canvas/handles.tsx`, `selection-chrome.ts`, `geometry.ts`
+- Result: the X sits on the top-right corner of the selection frame. Resize uses the other three corners. Rotate stays above the top edge.
+- Verification tier: Tier 1
+- Reason: selection overlay placement only; product renderer and schema unchanged.
+- Run: unit test `places delete on the top-right corner instead of a fourth resize knob`; embedded-browser select a mark and confirm three resize knobs plus X at top-right.
+- Skip: delivery and performance; handle layout only.
+
+### ASCII denser glyphs
+
+- Entry type: focused later edit.
+- Change ID: ascii-density
+- Request: make the ascii effect more noticeable/dense; maybe make the threshold higher. Follow-up: the ascii doesnt capture the contrast/details well enough anymore.
+- Changed owner: `src/app/renderer/image-effects.ts`, default ASCII charset.
+- Result: ramp mapping is linear across coverage again so midtones keep distinct glyphs. Glyphs stay opaque with mild cell oversize; default charset is ` .:;=+*#%@@`.
+- Verification tier: Tier 3
+- Reason: custom raster ASCII path.
+- Run: unit test `spreads ASCII coverage across the full glyph ramp for contrast`.
+- Skip: measured performance; tonal mapping tweak only.

@@ -57,3 +57,24 @@ it("keeps front and back artwork isolated through saved records and visible orde
   expect(componentIdsForView(components, ["back", "front", "legacy"], "back")).toEqual(["back"]);
   expect(componentIdsForView(components, ["front"], "back")).toEqual([]);
 });
+
+it("keeps effect toggles on library marks", () => {
+  const record = readComponentRecord({
+    centerX: 10,
+    centerY: 20,
+    effectPixelate: true,
+    effectRecolor: true,
+    effectDither: "floyd",
+    height: 40,
+    inkHex: "#111111",
+    inkId: "ink",
+    kind: "mark",
+    markId: "wordmark",
+    rotation: 0,
+    width: 80,
+  });
+
+  expect(record?.effectPixelate).toBe(true);
+  expect(record?.effectRecolor).toBe(true);
+  expect(record?.effectDither).toBe("floyd");
+});

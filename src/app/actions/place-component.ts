@@ -11,6 +11,7 @@ import type { ToolcraftCommand } from "@/toolcraft/runtime";
 import {
   DEFAULT_ASCII_CHARSET,
   DEFAULT_CUSTOM_INK_HEX,
+  DEFAULT_DITHER_MODE,
   DEFAULT_EFFECT_AMOUNT,
   DEFAULT_INK_COLORWAY_ID,
   DEFAULT_TYPOGRAPHY,
@@ -114,6 +115,7 @@ export function placeMark(
       effectAmount: DEFAULT_EFFECT_AMOUNT,
       effectAscii: false,
       effectCharset: DEFAULT_ASCII_CHARSET,
+      effectDither: DEFAULT_DITHER_MODE,
       effectInkHex: DEFAULT_CUSTOM_INK_HEX,
       effectInkId: DEFAULT_INK_COLORWAY_ID,
       effectPixelate: false,
@@ -149,6 +151,7 @@ export function placeText(
       effectAmount: DEFAULT_EFFECT_AMOUNT,
       effectAscii: false,
       effectCharset: DEFAULT_ASCII_CHARSET,
+      effectDither: DEFAULT_DITHER_MODE,
       effectInkHex: DEFAULT_CUSTOM_INK_HEX,
       effectInkId: DEFAULT_INK_COLORWAY_ID,
       effectPixelate: false,

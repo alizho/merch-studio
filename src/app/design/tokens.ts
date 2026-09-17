@@ -210,14 +210,12 @@ export function resolveTreatment(value: unknown): Treatment {
 
 /**
  * Effects replace an imported image's pixels before the finish (print/stitch)
- * is applied, and any combination can be on at once: Pixelate mosaics the
- * image into blocks, Recolor bakes a duotone in the effect ink over whatever
- * that leaves, and ASCII redraws whatever remains as monospace glyphs in the
- * effect ink. That fixed order is also the render order: e.g. Pixelate then
- * Recolor keeps the mosaic's hard block edges under the duotone, while
- * turning ASCII on always renders it last regardless of the other two, since
- * it replaces pixels with glyphs outright. Text and marks are unaffected;
- * they already recolor via Ink.
+ * is applied, and any combination can be on at once: Pixelate dithers to
+ * ink-or-empty cells (Bayer, Floyd–Steinberg, or random), Recolor bakes a
+ * duotone in the effect ink over whatever that leaves, and ASCII redraws
+ * whatever remains as monospace glyphs in the effect ink. That fixed order is
+ * also the render order. Live type is unaffected until it is flattened into
+ * pixels; library marks rasterize when an effect is on.
  */
 export type ImageEffectToggles = Readonly<{
   ascii: boolean;
@@ -231,12 +229,21 @@ export const NO_IMAGE_EFFECTS: ImageEffectToggles = Object.freeze({
   recolor: false,
 });
 
+/** 1-bit Pixelate kernels. `floyd` is Floyd–Steinberg error diffusion. */
+export type DitherMode = "bayer" | "floyd" | "random";
+
+export const DEFAULT_DITHER_MODE: DitherMode = "bayer";
+
+export function resolveDitherMode(value: unknown): DitherMode {
+  return value === "floyd" || value === "random" ? value : DEFAULT_DITHER_MODE;
+}
+
 /** Cell size in canvas px for Pixelate blocks and ASCII glyphs. */
 export const DEFAULT_EFFECT_AMOUNT = 12;
 export const MIN_EFFECT_AMOUNT = 3;
 export const MAX_EFFECT_AMOUNT = 48;
 /** ASCII glyph ramp, light to dark; the user can replace it with any characters. */
-export const DEFAULT_ASCII_CHARSET = " .:-=+*#%@";
+export const DEFAULT_ASCII_CHARSET = " .:;=+*#%@@";
 
 export type FaceDefinition = {
   /** CSS/canvas family name registered through the FontFace API. */

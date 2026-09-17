@@ -29,6 +29,10 @@ import { readScene } from "../state/scene";
 import { TARGETS, componentIdsForView, withComponent, type ComponentRecord } from "../state/components";
 import { useImages } from "../renderer/image-cache";
 import { useImportedImages } from "../renderer/imported-images";
+import {
+  collectRasterDataUrls,
+  useEmbeddedRasters,
+} from "../renderer/embedded-rasters";
 import { measureContext } from "../renderer/measure";
 import { panelFromRecord, panelWrites } from "../state/selection-values";
 import { useSelectionSync } from "../state/use-selection-sync";
@@ -90,6 +94,11 @@ export function DesignCanvas(): React.JSX.Element | null {
     () => readScene({ layers, values }),
     [layers, values],
   );
+  const rasterDataUrls = React.useMemo(
+    () => collectRasterDataUrls(scene.components),
+    [scene.components],
+  );
+  const embeddedRasters = useEmbeddedRasters(rasterDataUrls);
   const garmentImages = useImages(Object.values(scene.garment.sources));
 
   const frontRef = React.useRef<HTMLCanvasElement | null>(null);
@@ -117,7 +126,7 @@ export function DesignCanvas(): React.JSX.Element | null {
       context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       drawDesign(context, { ...scene, view }, resources);
     }
-  }, [facesReady, garmentImages, importedImages, scene]);
+  }, [embeddedRasters, facesReady, garmentImages, importedImages, scene]);
 
   const handleComponentChange = React.useCallback(
     (layerId: string, record: ComponentRecord, gesture: string) => {

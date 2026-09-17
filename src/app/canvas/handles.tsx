@@ -17,7 +17,7 @@
 import * as React from "react";
 import { Button } from "@/toolcraft/ui";
 
-import { componentCorners, type Box, type Point } from "./geometry";
+import { componentCorners, TOP_RIGHT_CORNER_INDEX, type Box, type Point } from "./geometry";
 import {
   angleBetween,
   gestureGroup,
@@ -130,27 +130,27 @@ export function Handles({
   const selectionBox = selected ? measure(selected) : null;
   const corners =
     selected && selectionBox ? componentCorners(selected, selectionBox) : [];
+  const resizeCorners = corners.filter(
+    (_, index) => index !== TOP_RIGHT_CORNER_INDEX,
+  );
+  const deleteCorner = corners[TOP_RIGHT_CORNER_INDEX];
 
   // Anchors are plain arithmetic in the component's rotated frame: the rotate
-  // node sits above the top edge, and delete sits just outside the top-right
-  // corner, clear of the resize node.
+  // node sits above the top edge, and delete occupies the top-right corner
+  // in place of that resize knob.
   const angle = ((selected?.rotation ?? 0) * Math.PI) / 180;
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   const centerX = selected?.centerX ?? 0;
   const centerY = selected?.centerY ?? 0;
-  const halfWidth = (selectionBox?.width ?? 0) / 2;
   const halfHeight = (selectionBox?.height ?? 0) / 2;
   const chrome = selectionChromeMetrics(zoom);
 
   const rotateLocalY = -halfHeight - chrome.rotateOffset;
   const rotateX = centerX - rotateLocalY * sin;
   const rotateY = centerY + rotateLocalY * cos;
-
-  const deleteLocalX = halfWidth + chrome.deleteOffset;
-  const deleteLocalY = -halfHeight - chrome.deleteOffset;
-  const deleteX = centerX + deleteLocalX * cos - deleteLocalY * sin;
-  const deleteY = centerY + deleteLocalX * sin + deleteLocalY * cos;
+  const deleteX = deleteCorner?.x ?? 0;
+  const deleteY = deleteCorner?.y ?? 0;
   const topEdge =
     corners.length === 4
       ? {
@@ -191,7 +191,7 @@ export function Handles({
               y1={topEdge.y}
               y2={rotateY}
             />
-            {corners.map((corner, index) => (
+            {resizeCorners.map((corner, index) => (
               <rect
                 data-merch-selection-anchor=""
                 fill={NODE_FILL}
@@ -292,7 +292,7 @@ export function Handles({
       })}
 
       {selected && selectedLayerId
-        ? corners.map((corner, index) => (
+        ? resizeCorners.map((corner, index) => (
             <div
               className={styles.handle}
               data-merch-interactive=""
@@ -355,7 +355,7 @@ export function Handles({
         </div>
       ) : null}
 
-      {selected && selectedLayerId ? (
+      {selected && selectedLayerId && deleteCorner ? (
         <div
           className={styles.handle}
           data-merch-interactive=""

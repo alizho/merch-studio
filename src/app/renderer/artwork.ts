@@ -2,8 +2,8 @@
  * Artwork mask building.
  *
  * Each component is rasterized into an alpha mask in its own local space, which
- * the treatment passes then turn into ink. Marks draw from `Path2D`, so they
- * stay crisp at any scale or rotation instead of being resampled from a bitmap.
+ * the treatment passes then turn into ink. Marks stay Path2D until an effect
+ * needs pixels; live type stays glyphs until Flatten bakes it.
  */
 
 import { canvasFontFor } from "../design/fonts";
@@ -15,8 +15,9 @@ import {
   type ImageEffectToggles,
   type Typography,
 } from "../design/tokens";
-import type { ComponentRecord } from "../state/components";
+import { hasActiveEffects, type ComponentRecord } from "../state/components";
 import { getCutoutImage } from "./background-removal";
+import { getEmbeddedRaster } from "./embedded-rasters";
 import { getEffectImage } from "./image-effects";
 import type { ImportedImage } from "./imported-images";
 
@@ -90,16 +91,158 @@ export function measureText(
   };
 }
 
+function drawTextFill(
+  ctx: AnyContext,
+  record: ComponentRecord,
+  box: Box,
+  padding: number,
+): boolean {
+  const typography = record.typography;
+
+  if (!typography) {
+    return false;
+  }
+
+  applyTextStyle(ctx, typography);
+
+  const lines = textLines(record);
+  const lineHeight = typography.size * typography.lineHeight;
+  const firstBaseline =
+    padding + (lineHeight - typography.size) / 2 + typography.size * 0.82;
+
+  lines.forEach((line, index) => {
+    ctx.fillText(
+      line,
+      padding + box.width / 2,
+      firstBaseline + lineHeight * index,
+    );
+  });
+
+  return true;
+}
+
+function drawMarkFill(
+  ctx: AnyContext,
+  record: ComponentRecord,
+  box: Box,
+  padding: number,
+): boolean {
+  const mark = findMark(record.markId ?? "");
+
+  if (!mark) {
+    return false;
+  }
+
+  const scale = Math.min(box.width / mark.width, box.height / mark.height);
+  const drawWidth = mark.width * scale;
+  const drawHeight = mark.height * scale;
+
+  ctx.save();
+  ctx.translate(
+    padding + (box.width - drawWidth) / 2,
+    padding + (box.height - drawHeight) / 2,
+  );
+  ctx.scale(scale, scale);
+  ctx.fill(new Path2D(mark.d));
+  ctx.restore();
+
+  return true;
+}
+
+/**
+ * Rasterizes live type in its ink so Flatten can hand the same bitmap to
+ * Pixelate, Recolor, and ASCII that an import uses.
+ */
+export function rasterizeTextFill(
+  measureCtx: AnyContext,
+  record: ComponentRecord,
+  inkHex: string,
+): ImportedImage | null {
+  const box = measureText(measureCtx, record);
+  const surface = createSurface(box.width, box.height);
+
+  surface.ctx.fillStyle = inkHex;
+
+  if (!drawTextFill(surface.ctx as AnyContext, record, box, 0)) {
+    return null;
+  }
+
+  return {
+    height: box.height,
+    image: surface.canvas,
+    resourceRef: "flattened-text",
+    width: box.width,
+  };
+}
+
+function rasterizeMarkFill(
+  record: ComponentRecord,
+  box: Box,
+  inkHex: string,
+): ImportedImage | null {
+  const surface = createSurface(box.width, box.height);
+
+  surface.ctx.fillStyle = inkHex;
+
+  if (!drawMarkFill(surface.ctx as AnyContext, record, box, 0)) {
+    return null;
+  }
+
+  return {
+    height: box.height,
+    image: surface.canvas,
+    resourceRef: record.markId ?? "mark",
+    width: box.width,
+  };
+}
+
+function paintEffectedImage(
+  ctx: AnyContext,
+  record: ComponentRecord,
+  source: ImportedImage,
+  box: Box,
+  padding: number,
+): void {
+  const effectInkHex = resolveInkColorway(
+    record.effectInkId,
+    record.effectInkHex,
+  ).hex;
+  const effects: ImageEffectToggles = {
+    ascii: record.effectAscii,
+    pixelate: record.effectPixelate,
+    recolor: record.effectRecolor,
+  };
+  const effected = getEffectImage(
+    source,
+    effects,
+    record.effectAmount,
+    effectInkHex,
+    record.effectCharset,
+    record.effectDither,
+  );
+
+  ctx.imageSmoothingEnabled = !(effects.pixelate && !effects.ascii);
+  ctx.drawImage(effected.image, padding, padding, box.width, box.height);
+  ctx.imageSmoothingEnabled = true;
+}
+
 /**
  * The pixels an image record should draw. A record stamped for different
  * content than its media id now holds draws nothing, rather than showing
- * another upload's pixels while it is being re-placed.
+ * another upload's pixels while it is being re-placed. Flattened type uses
+ * the PNG stored on the record instead of a media id.
  */
 export function resolveRecordImage(
   record: ComponentRecord,
   resources: ImageResources,
 ): ImportedImage | undefined {
-  if (record.kind !== "image" || !record.mediaId) return undefined;
+  if (record.kind !== "image") return undefined;
+
+  if (record.rasterDataUrl) {
+    return getEmbeddedRaster(record.rasterDataUrl);
+  }
+
+  if (!record.mediaId) return undefined;
 
   const imported = resources.media.get(record.mediaId);
 
@@ -142,50 +285,34 @@ export function buildArtworkMask(
   ctx.fillStyle = "#000000";
 
   if (record.kind === "text") {
-    const typography = record.typography;
+    ctx.fillStyle = "#000000";
 
-    if (!typography) {
+    if (!drawTextFill(ctx, record, box, padding)) {
       return null;
     }
-
-    applyTextStyle(ctx, typography);
-
-    const lines = textLines(record);
-    const lineHeight = typography.size * typography.lineHeight;
-    // Seat the first baseline so the block is vertically centered in the box.
-    const firstBaseline =
-      padding + (lineHeight - typography.size) / 2 + typography.size * 0.82;
-
-    lines.forEach((line, index) => {
-      ctx.fillText(
-        line,
-        padding + box.width / 2,
-        firstBaseline + lineHeight * index,
-      );
-    });
 
     return { box, mask: surface };
   }
 
   if (record.kind === "mark") {
-    const mark = findMark(record.markId ?? "");
+    if (hasActiveEffects(record)) {
+      const inkHex = resolveInkColorway(record.inkId, record.inkHex).hex;
+      const raster = rasterizeMarkFill(record, box, inkHex);
 
-    if (!mark) {
-      return null;
+      if (!raster) {
+        return null;
+      }
+
+      paintEffectedImage(ctx, record, raster, box, padding);
+
+      return { box, mask: surface };
     }
 
-    const scale = Math.min(box.width / mark.width, box.height / mark.height);
-    const drawWidth = mark.width * scale;
-    const drawHeight = mark.height * scale;
+    ctx.fillStyle = "#000000";
 
-    ctx.save();
-    ctx.translate(
-      padding + (box.width - drawWidth) / 2,
-      padding + (box.height - drawHeight) / 2,
-    );
-    ctx.scale(scale, scale);
-    ctx.fill(new Path2D(mark.d));
-    ctx.restore();
+    if (!drawMarkFill(ctx, record, box, padding)) {
+      return null;
+    }
 
     return { box, mask: surface };
   }
@@ -196,38 +323,8 @@ export function buildArtworkMask(
     return null;
   }
 
-  // The cutout works on the image's own pixels; the padded surface's
-  // transparent frame would hide the backdrop from its edge sampling. The
-  // effect then runs on whichever pixels that leaves, so a pixelated or
-  // ASCII'd cutout keeps its cleared background empty.
   const cutout = record.backgroundRemoval ? getCutoutImage(imported) : imported;
-  const effectInkHex = resolveInkColorway(
-    record.effectInkId,
-    record.effectInkHex,
-  ).hex;
-  const effects: ImageEffectToggles = {
-    ascii: record.effectAscii,
-    pixelate: record.effectPixelate,
-    recolor: record.effectRecolor,
-  };
-  const effected = getEffectImage(
-    cutout,
-    effects,
-    record.effectAmount,
-    effectInkHex,
-    record.effectCharset,
-  );
-
-  // Pixelate's blocks are deliberately crisp at their own resolution; the
-  // browser's default bilinear downscale into the (usually smaller) mask
-  // would soften every block edge right back into a blur. That only holds
-  // when Pixelate is the last stage, though: ASCII always resamples its own
-  // input down to its glyph grid and draws antialiased text regardless of
-  // what fed it, so once ASCII is also on this goes back to a smooth
-  // resample. Recolor never resamples, so it does not affect this either way.
-  ctx.imageSmoothingEnabled = !(effects.pixelate && !effects.ascii);
-  ctx.drawImage(effected.image, padding, padding, box.width, box.height);
-  ctx.imageSmoothingEnabled = true;
+  paintEffectedImage(ctx, record, cutout, box, padding);
 
   return { box, mask: surface };
 }

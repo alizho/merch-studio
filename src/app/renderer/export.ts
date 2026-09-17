@@ -13,6 +13,11 @@ import { getLoadedImage, loadImage } from "./image-cache";
 import { resolveImportedImages } from "./imported-images";
 import { loadProductFaces } from "../design/fonts";
 import { readScene, sceneGarmentSources } from "../state/scene";
+import { readComponents } from "../state/components";
+import {
+  collectRasterDataUrls,
+  ensureEmbeddedRasters,
+} from "./embedded-rasters";
 
 export const designExportRenderer: ToolcraftProductExportRenderer = {
   baseFileName: "merch-studio-design",
@@ -23,6 +28,7 @@ export const designExportRenderer: ToolcraftProductExportRenderer = {
     // Export can run before a view has ever been previewed, so the art and the
     // faces are resolved here rather than assumed to be warm.
     await loadProductFaces();
+    await ensureEmbeddedRasters(collectRasterDataUrls(readComponents(state.values)));
 
     for (const source of sceneGarmentSources(scene)) {
       await loadImage(source);

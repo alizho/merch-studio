@@ -20,8 +20,10 @@ import {
   MAX_EFFECT_AMOUNT,
   MIN_EFFECT_AMOUNT,
   readHexColor,
-  resolveTreatment,
+  resolveDitherMode,
   resolveGarmentView,
+  resolveTreatment,
+  type DitherMode,
   type GarmentView,
   type Treatment,
   type Typography,
@@ -40,6 +42,7 @@ export const TARGETS = {
   selectedEffectAmount: "selectedLayer.effectAmount",
   selectedEffectAscii: "selectedLayer.effectAscii",
   selectedEffectCharset: "selectedLayer.effectCharset",
+  selectedEffectDither: "selectedLayer.effectDither",
   selectedEffectInk: "selectedLayer.effectInk",
   selectedEffectInkColor: "selectedLayer.effectInkColor",
   selectedEffectPixelate: "selectedLayer.effectPixelate",
@@ -77,13 +80,15 @@ export type ComponentRecord = {
   effectAscii: boolean;
   /** ASCII's glyph ramp, light to dark; user-editable, defaults to a tonal set. */
   effectCharset: string;
+  /** Bayer, Floyd–Steinberg, or random kernel used while Pixelate is on. */
+  effectDither: DitherMode;
   /**
    * The effect's own custom ink, kept separate from the component's general
    * ink (which images never expose) so Recolor/ASCII have a color to draw in.
    */
   effectInkHex: string;
   effectInkId: string;
-  /** Mosaics the image into blocks; stacks with Recolor and ASCII. */
+  /** 1-bit dither of the image into ink or empty cells; stacks with Recolor and ASCII. */
   effectPixelate: boolean;
   /** Bakes a duotone in the effect ink; stacks with Pixelate and ASCII. */
   effectRecolor: boolean;
@@ -104,6 +109,11 @@ export type ComponentRecord = {
    * still belongs to its layer's asset.
    */
   resourceRef?: string;
+  /**
+   * Flattened type, stored as a PNG data URL on the record so it can take
+   * the same pixel effects as an import without becoming a second media layer.
+   */
+  rasterDataUrl?: string;
   rotation: number;
   text?: string;
   /** Print or stitch, owned by this component rather than the garment. */
@@ -111,6 +121,18 @@ export type ComponentRecord = {
   typography?: Typography;
   width: number;
 };
+
+/** Pixelate, Recolor, and ASCII run on imported artwork and library marks. */
+export function effectsApplyToKind(kind: ComponentKind): boolean {
+  return kind === "image" || kind === "mark";
+}
+
+export function hasActiveEffects(record: ComponentRecord): boolean {
+  return (
+    effectsApplyToKind(record.kind) &&
+    (record.effectPixelate || record.effectRecolor || record.effectAscii)
+  );
+}
 
 export type ComponentMap = Readonly<Record<string, ComponentRecord>>;
 
@@ -174,18 +196,19 @@ export function readComponentRecord(
         readNumber(value.effectAmount, DEFAULT_EFFECT_AMOUNT),
       ),
     ),
-    effectAscii: kind === "image" && value.effectAscii === true,
+    effectAscii: effectsApplyToKind(kind) && value.effectAscii === true,
     effectCharset:
       typeof value.effectCharset === "string" && value.effectCharset.length > 0
         ? value.effectCharset
         : DEFAULT_ASCII_CHARSET,
+    effectDither: resolveDitherMode(value.effectDither),
     effectInkHex: readHexColor(value.effectInkHex, DEFAULT_CUSTOM_INK_HEX),
     effectInkId:
       typeof value.effectInkId === "string"
         ? value.effectInkId
         : DEFAULT_INK_COLORWAY_ID,
-    effectPixelate: kind === "image" && value.effectPixelate === true,
-    effectRecolor: kind === "image" && value.effectRecolor === true,
+    effectPixelate: effectsApplyToKind(kind) && value.effectPixelate === true,
+    effectRecolor: effectsApplyToKind(kind) && value.effectRecolor === true,
     height: Math.max(1, readNumber(value.height, 120)),
     inkHex: readHexColor(value.inkHex, DEFAULT_CUSTOM_INK_HEX),
     inkId:
@@ -201,6 +224,11 @@ export function readComponentRecord(
       : {}),
     ...(kind === "image" && typeof value.resourceRef === "string"
       ? { resourceRef: value.resourceRef }
+      : {}),
+    ...(kind === "image" &&
+    typeof value.rasterDataUrl === "string" &&
+    value.rasterDataUrl.startsWith("data:image/")
+      ? { rasterDataUrl: value.rasterDataUrl }
       : {}),
     rotation: readNumber(value.rotation, 0),
     ...(kind === "text"

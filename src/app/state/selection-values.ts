@@ -15,13 +15,15 @@ import {
   MAX_EFFECT_AMOUNT,
   MIN_EFFECT_AMOUNT,
   readHexColor,
+  resolveDitherMode,
   resolveFace,
   resolveTreatment,
+  type DitherMode,
   type TextCase,
   type Treatment,
   type Typography,
 } from "../design/tokens";
-import { TARGETS, type ComponentRecord } from "./components";
+import { TARGETS, effectsApplyToKind, type ComponentRecord } from "./components";
 
 /** Tracking is authored in hundredths of an em so the slider stays integral. */
 export const TRACKING_SCALE = 100;
@@ -31,6 +33,7 @@ export type PanelValues = {
   effectAmount: number;
   effectAscii: boolean;
   effectCharset: string;
+  effectDither: DitherMode;
   effectInk: string;
   effectInkHex: string;
   effectPixelate: boolean;
@@ -72,6 +75,7 @@ export function panelFromValues(
       values[TARGETS.selectedEffectCharset],
       DEFAULT_ASCII_CHARSET,
     ),
+    effectDither: resolveDitherMode(values[TARGETS.selectedEffectDither]),
     effectInk: readString(
       values[TARGETS.selectedEffectInk],
       DEFAULT_INK_COLORWAY_ID,
@@ -103,6 +107,7 @@ export function panelFromRecord(record: ComponentRecord): PanelValues {
     effectAmount: record.effectAmount,
     effectAscii: record.effectAscii,
     effectCharset: record.effectCharset,
+    effectDither: record.effectDither,
     effectInk: record.effectInkId,
     effectInkHex: record.effectInkHex,
     effectPixelate: record.effectPixelate,
@@ -126,6 +131,7 @@ export function panelEqual(left: PanelValues, right: PanelValues): boolean {
     left.effectAmount === right.effectAmount &&
     left.effectAscii === right.effectAscii &&
     left.effectCharset === right.effectCharset &&
+    left.effectDither === right.effectDither &&
     left.effectInk === right.effectInk &&
     left.effectInkHex === right.effectInkHex &&
     left.effectPixelate === right.effectPixelate &&
@@ -158,18 +164,19 @@ export function applyPanelToRecord(
   record: ComponentRecord,
   panel: PanelValues,
 ): ComponentRecord {
-  const isImage = record.kind === "image";
+  const acceptsEffects = effectsApplyToKind(record.kind);
 
   return {
     ...record,
-    backgroundRemoval: isImage ? panel.backgroundRemoval : false,
+    backgroundRemoval: record.kind === "image" ? panel.backgroundRemoval : false,
     effectAmount: panel.effectAmount,
-    effectAscii: isImage && panel.effectAscii,
+    effectAscii: acceptsEffects && panel.effectAscii,
     effectCharset: panel.effectCharset,
+    effectDither: panel.effectDither,
     effectInkHex: panel.effectInkHex,
     effectInkId: panel.effectInk,
-    effectPixelate: isImage && panel.effectPixelate,
-    effectRecolor: isImage && panel.effectRecolor,
+    effectPixelate: acceptsEffects && panel.effectPixelate,
+    effectRecolor: acceptsEffects && panel.effectRecolor,
     inkHex: panel.inkHex,
     inkId: panel.ink,
     rotation: panel.rotation,
@@ -192,6 +199,7 @@ export function panelWrites(
     [TARGETS.selectedEffectAscii, panel.effectAscii],
     [TARGETS.selectedEffectAmount, panel.effectAmount],
     [TARGETS.selectedEffectCharset, panel.effectCharset],
+    [TARGETS.selectedEffectDither, panel.effectDither],
     [TARGETS.selectedEffectInk, panel.effectInk],
     [TARGETS.selectedEffectInkColor, panel.effectInkHex],
     [TARGETS.selectedInk, panel.ink],

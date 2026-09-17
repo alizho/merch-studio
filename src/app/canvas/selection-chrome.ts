@@ -11,7 +11,6 @@ export function selectionChromeMetrics(zoomPercent: number) {
 
   return {
     dash: SELECTION_SCREEN_DASH.map(toCanvasUnits).join(" "),
-    deleteOffset: toCanvasUnits(NODE_SCREEN_SIZE * 1.5),
     hitTargetSize: toCanvasUnits(HIT_TARGET_SCREEN_SIZE),
     nodeSize: toCanvasUnits(NODE_SCREEN_SIZE),
     rotateOffset: toCanvasUnits(ROTATE_SCREEN_OFFSET),

@@ -15,6 +15,7 @@ import {
   DEFAULT_ASCII_CHARSET,
   DEFAULT_CUSTOM_GARMENT_HEX,
   DEFAULT_CUSTOM_INK_HEX,
+  DEFAULT_DITHER_MODE,
   DEFAULT_EFFECT_AMOUNT,
   DEFAULT_GARMENT_COLORWAY_ID,
   DEFAULT_INK_COLORWAY_ID,
@@ -58,6 +59,11 @@ const whenImageSelected = {
   mode: "conditional",
 } as const;
 
+const whenImageOrMarkSelected = {
+  all: [{ oneOf: ["image", "mark"], target: TARGETS.selectedKind }],
+  mode: "conditional",
+} as const;
+
 /**
  * Ink applies to type and to the marks. Imported artwork keeps its own colors
  * in print, so an ink choice would not change it there.
@@ -91,21 +97,29 @@ const whenInkIsCustom = {
  * Detail by Pixelate and ASCII), so gating either on "the specific toggle
  * that currently needs it" would need an OR across independent booleans that
  * applicability predicates cannot express (predicates only AND). They stay
- * visible for any selected image instead, like Cutout does, so a value set
- * ahead of turning an effect on is not lost or hidden.
+ * visible for any selected image or mark instead, like Cutout does, so a
+ * value set ahead of turning an effect on is not lost or hidden.
  */
 const whenEffectInkIsCustom = {
   all: [
-    { equals: "image", target: TARGETS.selectedKind },
+    { oneOf: ["image", "mark"], target: TARGETS.selectedKind },
     { equals: CUSTOM_COLORWAY_ID, target: TARGETS.selectedEffectInk },
   ],
   mode: "conditional",
 } as const;
 
-/** The glyph ramp only means anything for ASCII, which owns this one alone. */
+/** The dither kernel only means anything while Pixelate is on. */
+const whenPixelateOn = {
+  all: [
+    { oneOf: ["image", "mark"], target: TARGETS.selectedKind },
+    { equals: true, target: TARGETS.selectedEffectPixelate },
+  ],
+  mode: "conditional",
+} as const;
+
 const whenEffectIsAscii = {
   all: [
-    { equals: "image", target: TARGETS.selectedKind },
+    { oneOf: ["image", "mark"], target: TARGETS.selectedKind },
     { equals: true, target: TARGETS.selectedEffectAscii },
   ],
   mode: "conditional",
@@ -282,6 +296,15 @@ export const appSchema = defineToolcraft({
                 target: TARGETS.selectedTracking,
                 type: "slider",
               },
+              flatten: {
+                actions: [{ label: "Flatten", value: "component.flattenText" }],
+                applicability: whenTextSelected,
+                description:
+                  "Turns type into pixels so Pixelate, Recolor, and ASCII can treat it like an image. Type settings are removed after flattening.",
+                label: "Raster",
+                target: "component.flatten",
+                type: "actions",
+              },
               rotation: {
                 applicability: whenComponentSelected,
                 defaultValue: 0,
@@ -318,15 +341,30 @@ export const appSchema = defineToolcraft({
           {
             controls: {
               effectPixelate: {
-                applicability: whenImageSelected,
+                applicability: whenImageOrMarkSelected,
                 defaultValue: false,
-                description: "Mosaics the image into blocks.",
-                label: "Pixelate",
+                description:
+                  "Halftones the image into ink or empty cells, with no in-between tones.",
+                label: "Dither",
                 target: TARGETS.selectedEffectPixelate,
                 type: "switch",
               },
+              effectDither: {
+                applicability: whenPixelateOn,
+                defaultValue: DEFAULT_DITHER_MODE,
+                description:
+                  "Bayer is an ordered grid, F-S spreads quantization error to neighbors, and Random uses a stable noise threshold.",
+                label: "Algorithm",
+                options: [
+                  { label: "Bayer", value: "bayer" },
+                  { label: "F-S", value: "floyd" },
+                  { label: "Random", value: "random" },
+                ],
+                target: TARGETS.selectedEffectDither,
+                type: "segmented",
+              },
               effectRecolor: {
-                applicability: whenImageSelected,
+                applicability: whenImageOrMarkSelected,
                 defaultValue: false,
                 description: "Bakes a duotone in the ink below.",
                 label: "Recolor",
@@ -334,7 +372,7 @@ export const appSchema = defineToolcraft({
                 type: "switch",
               },
               effectAscii: {
-                applicability: whenImageSelected,
+                applicability: whenImageOrMarkSelected,
                 defaultValue: false,
                 description:
                   "Replaces the image with monospace characters in the ink below.",
@@ -343,9 +381,9 @@ export const appSchema = defineToolcraft({
                 type: "switch",
               },
               effectInk: {
-                applicability: whenImageSelected,
+                applicability: whenImageOrMarkSelected,
                 defaultValue: DEFAULT_INK_COLORWAY_ID,
-                description: "Used by Recolor and ASCII.",
+                description: "Used by Pixelate, Recolor, and ASCII.",
                 label: "Effect ink",
                 orderRole: "primary",
                 target: TARGETS.selectedEffectInk,
@@ -359,9 +397,10 @@ export const appSchema = defineToolcraft({
                 type: "color",
               },
               effectAmount: {
-                applicability: whenImageSelected,
+                applicability: whenImageOrMarkSelected,
                 defaultValue: DEFAULT_EFFECT_AMOUNT,
-                description: "Used by Pixelate and ASCII; smaller values keep more detail.",
+                description:
+                  "Cell size for Pixelate and ASCII; smaller values keep more detail.",
                 label: "Detail",
                 max: MAX_EFFECT_AMOUNT,
                 min: MIN_EFFECT_AMOUNT,
@@ -384,7 +423,7 @@ export const appSchema = defineToolcraft({
               },
             },
             description:
-              "Any combination of Pixelate, Recolor, and ASCII can be on for the selected image, on top of its finish.",
+              "Any combination of Pixelate, Recolor, and ASCII can be on for the selected image or library mark, on top of its finish. Pixelate is 1-bit dither.",
             id: "effects",
             title: "Effects",
           },

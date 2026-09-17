@@ -80,7 +80,7 @@ export const appProductReadiness: ToolcraftProductReadiness = {
       capability: "command",
       evidence: {
         detail:
-          "The user asked for a delete control at the top right of the component selection, on the canvas.",
+        "The user asked for a delete control at the top right of the component selection, on the canvas, occupying the top-right selection knob.",
         source: "user-request",
       },
       id: "component.delete",
@@ -212,6 +212,28 @@ export const appProductReadiness: ToolcraftProductReadiness = {
       },
       surface: "panel",
       target: "selectedLayer.text",
+    },
+    {
+      alternative: {
+        reason:
+          "Flattening on the canvas would hide that type becomes pixels and would duplicate the Effects workflow.",
+        surface: "canvas",
+      },
+      capability: "command",
+      evidence: {
+        detail:
+          "Add ability to flatten the text so that it can go through the same treatment for effects as other images.",
+        source: "user-request",
+      },
+      id: "component.flatten",
+      reason:
+        "Flatten is a one-shot convert-to-pixels command next to the type settings it replaces.",
+      selectionScope: {
+        mode: "selected-entity",
+        selectionInteractionId: "component.select",
+      },
+      surface: "panel",
+      target: "component.flatten",
     },
   ],
   mode: "product",
@@ -359,6 +381,22 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   },
   {
     automated: true,
+    automatedTestName:
+      "flattens selected text into an image component for effects",
+    browser: false,
+    componentType: "actions",
+    evidence: "command-side-effect",
+    expectedObservable:
+      "Flatten converts the selected text layer into pixels that keep placement and can take Pixelate, Recolor, and ASCII.",
+    fixture: "one selected text component",
+    id: "component.flatten",
+    interactionId: "component.flatten",
+    kind: "control",
+    target: "component.flatten",
+    userAction: "Select text and press Flatten.",
+  },
+  {
+    automated: true,
     automatedTestName: "adopts an imported image asset as a component record",
     browser: false,
     componentType: "fileDrop",
@@ -388,6 +426,23 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
     selectionScopeCoverage: "two-entity-isolation",
     target: "selectedLayer.cutout",
     userAction: "Select an imported image and turn on Cutout image.",
+  },
+  {
+    automated: true,
+    automatedTestName: "dithers selected artwork to ink or empty cells",
+    browser: false,
+    componentType: "segmented",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "With Pixelate on, Bayer, F-S, and Random each render the selected image or mark as 1-bit ink or empty cells with no in-between tones, leaving other layers unchanged.",
+    fixture: "two placed marks",
+    id: "selected.effectDither",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    optionCoverage: "each-visible-item",
+    selectionScopeCoverage: "two-entity-isolation",
+    target: "selectedLayer.effectDither",
+    userAction: "Select a mark, turn on Pixelate, and choose Bayer, F-S, then Random.",
   },
   {
     automated: true,
@@ -669,7 +724,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
     kind: "canvas-handle",
     target: "design.components",
     userAction:
-      "Select a component and press the delete node at the top right of its frame.",
+      "Select a component and press the X that replaces the top-right resize knob.",
   },
   {
     automated: true,
@@ -811,6 +866,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.size",
         "selectedLayer.case",
         "selectedLayer.tracking",
+        "component.flatten",
         "selectedLayer.rotation",
         "selectedLayer.ink",
         "selectedLayer.inkColor",
@@ -823,10 +879,17 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       entityId: "componentEffects",
       finiteSelectors: [
         {
+          affectedTargets: [],
           reason:
-            "Pixelate replaces the selected image's pixels with a block mosaic and owns that outcome.",
-          role: "parameter",
+            "Pixelate reveals Bayer, F-S, and Random dither modes for the 1-bit kernel.",
+          role: "branch",
           target: "selectedLayer.effectPixelate",
+        },
+        {
+          reason:
+            "Dither mode changes the 1-bit pattern and owns that outcome.",
+          role: "parameter",
+          target: "selectedLayer.effectDither",
         },
         {
           reason:
@@ -848,10 +911,11 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         },
       ],
       groupingReason:
-        "Pixelate, Recolor, and ASCII each replace the selected image's pixels before it is treated and can combine freely, so they share one reset scope separate from finish and cutout.",
+        "Pixelate, Recolor, and ASCII each replace the selected image or library mark's pixels before it is treated and can combine freely, so they share one reset scope separate from finish and cutout.",
       id: "effects",
       targets: [
         "selectedLayer.effectPixelate",
+        "selectedLayer.effectDither",
         "selectedLayer.effectRecolor",
         "selectedLayer.effectAscii",
         "selectedLayer.effectInk",

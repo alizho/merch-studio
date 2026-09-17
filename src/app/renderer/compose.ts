@@ -35,7 +35,12 @@ import {
   luminanceOf,
   type Surface,
 } from "./raster";
-import { componentIdsForView, type ComponentMap, type ComponentRecord } from "../state/components";
+import {
+  componentIdsForView,
+  hasActiveEffects,
+  type ComponentMap,
+  type ComponentRecord,
+} from "../state/components";
 
 type AnyContext =
   | CanvasRenderingContext2D
@@ -141,16 +146,18 @@ function treatedCacheKey(
     record.markId ?? "",
     record.mediaId ?? "",
     record.backgroundRemoval ? "background-removed" : "background-kept",
-    record.kind === "image"
-      ? `${record.effectPixelate ? "p" : ""}${record.effectRecolor ? "r" : ""}${record.effectAscii ? "a" : ""}`
+    hasActiveEffects(record)
+      ? `${record.effectPixelate ? "p" : ""}${record.effectRecolor ? "r" : ""}${record.effectAscii ? "a" : ""}:${record.effectPixelate ? record.effectDither : ""}`
       : "",
-    record.kind === "image" && (record.effectPixelate || record.effectAscii)
+    hasActiveEffects(record) && (record.effectPixelate || record.effectAscii)
       ? record.effectAmount
       : "",
-    record.kind === "image" && record.effectAscii ? record.effectCharset : "",
-    record.kind === "image" && (record.effectRecolor || record.effectAscii)
+    record.effectAscii ? record.effectCharset : "",
+    hasActiveEffects(record) &&
+    (record.effectPixelate || record.effectRecolor || record.effectAscii)
       ? [record.effectInkId, record.effectInkId === CUSTOM_COLORWAY_ID ? record.effectInkHex : ""].join(",")
       : "",
+    record.rasterDataUrl ?? "",
     imageSourceId(resolveRecordImage(record, resources)?.image),
     record.text ?? "",
     typography
@@ -199,8 +206,8 @@ function drawComponent(
     // one of those should pick up that same ink rather than the (hidden, for
     // images) general Ink control's leftover value.
     const usesEffectInk =
-      record.kind === "image" &&
-      (record.effectRecolor || record.effectAscii);
+      hasActiveEffects(record) &&
+      (record.effectPixelate || record.effectRecolor || record.effectAscii);
     const inkHex = usesEffectInk
       ? resolveInkColorway(record.effectInkId, record.effectInkHex).hex
       : resolveInkColorway(record.inkId, record.inkHex).hex;
@@ -209,7 +216,7 @@ function drawComponent(
       built.mask,
       record.treatment,
       inkHex,
-      record.kind === "image",
+      record.kind === "image" || hasActiveEffects(record),
     );
     box = built.box;
 
