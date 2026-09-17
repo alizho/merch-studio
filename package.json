@@ -6,6 +6,7 @@
   "scripts": {
     "ai:check": "node scripts/check-toolcraft-code-health.mjs",
     "dev": "node scripts/run-vite-on-free-port.mjs dev",
+    "multiplayer:server": "node scripts/multiplayer-server.mjs",
     "dev:restart": "node scripts/run-vite-on-free-port.mjs dev --toolcraft-restart",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "node scripts/run-vite-on-free-port.mjs preview",
@@ -49,7 +50,8 @@
     "react-resizable-panels": "^4.10.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
-    "three": "0.185.1"
+    "three": "0.185.1",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.1",

@@ -13,6 +13,7 @@ import { libraryStampControlType } from "./controls/library-stamp-control-types"
 import { LibraryStampControl } from "./controls/library-stamp-control";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./design/tokens";
 import { DesignCanvas } from "./canvas/design-canvas";
+import { MultiplayerCursorsOverlay } from "./multiplayer/cursors-overlay";
 import { designExportRenderer } from "./renderer/export";
 import { onPanelAction } from "./actions/panel-actions";
 
@@ -43,7 +44,12 @@ export const appComposition = composeToolcraftApp(appSchema, {
     },
   },
   scene: {
-    canvasContent: <DesignCanvas />,
+    canvasContent: (
+      <>
+        <DesignCanvas />
+        <MultiplayerCursorsOverlay />
+      </>
+    ),
     rasterFrameRenderer: designExportRenderer,
     // Imported artwork is drawn by the product renderer inside the print area
     // and carries the print or stitch treatment, so the generic media preview
