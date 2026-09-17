@@ -246,10 +246,6 @@ export const appProductReadiness: ToolcraftProductReadiness = {
       id: "component.flatten",
       reason:
         "Flatten is a one-shot convert-to-pixels command next to the type settings it replaces.",
-      selectionScope: {
-        mode: "selected-entity",
-        selectionInteractionId: "component.select",
-      },
       surface: "panel",
       target: "component.flatten",
     },

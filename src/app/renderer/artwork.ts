@@ -16,7 +16,7 @@ import {
   type Typography,
 } from "../design/tokens";
 import { hasActiveEffects, type ComponentRecord } from "../state/components";
-import { getCutoutImage } from "./background-removal";
+import { getCutoutImage, type SizedImage } from "./background-removal";
 import { getEmbeddedRaster } from "./embedded-rasters";
 import { getEffectImage } from "./image-effects";
 import type { ImportedImage } from "./imported-images";
@@ -203,9 +203,9 @@ function rasterizeMarkFill(
  */
 function computeEffectedArtwork(
   record: ComponentRecord,
-  source: ImportedImage,
+  source: SizedImage,
   box: Box,
-): { effected: ImportedImage; marginX: number; marginY: number } {
+): { effected: SizedImage; marginX: number; marginY: number } {
   const effectInkHex = resolveInkColorway(
     record.effectInkId,
     record.effectInkHex,
@@ -238,7 +238,7 @@ function computeEffectedArtwork(
 function paintEffectedImage(
   ctx: AnyContext,
   record: ComponentRecord,
-  effected: ImportedImage,
+  effected: SizedImage,
   box: Box,
   padding: number,
   marginX: number,
