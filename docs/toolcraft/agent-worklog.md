@@ -4,7 +4,7 @@
 
 Mode: product
 
-Active change: branded-workspace-frame
+Active change: panel-move-grip-muted
 
 This is a merch design studio. Later entries stay compact. Detailed requests and results belong in `docs/agent-journal/changes`; text command attempts live in `.toolcraft/journal/runs`.
 
@@ -238,3 +238,60 @@ Protected receipts own initial/performance proof. Later edits record focused che
 - Changed owner: workspace frame title typography.
 - Result: increased the Alliance title from 14px to 18px with a 22px line height and a 2px optical downward adjustment.
 - Focused checks: embedded-browser inspection confirmed the larger title and optical baseline alignment in the workspace header; no aggregate gate.
+
+### Dark-mode control section icons
+
+- Entry type: focused later edit.
+- Change ID: dark-mode-section-icons
+- Request: control-area icons (Settings, Garment, Components, Selected, Image Export) stay black and should tint white in dark mode.
+- Changed owner: `src/toolcraft/runtime/react/controls-panel/layout/controls-panel-section.tsx` (authorized local runtime fork).
+- Result: section header PNGs use the runtime `dark:` variant (`brightness(0) invert(1)`) so they render white in dark mode and stay black in light mode.
+- Verification tier: Tier 1
+- Reason: panel chrome presentation only; schema, renderer, and product values unchanged.
+- Run: embedded-browser theme toggle; computed `filter: brightness(0) invert(1)` in dark, `filter: none` in light.
+- Skip: feature acceptance, delivery, and performance; no product output or schema change.
+
+### Image library tile background
+
+- Entry type: focused later edit.
+- Change ID: library-tile-light-background
+- Request: image library component backgrounds should be light gray in light mode.
+- Changed owner: `src/app/design/swatches.ts` mark tile SVGs.
+- Result: tiles no longer bake a `#171717` fill; ImagePicker `--muted` shows through (`#f3f4f6` light, `#111111` dark). Volt marks unchanged.
+- Verification tier: Tier 1
+- Run: embedded-browser both themes. Light tile `rgb(243, 244, 246)`; dark `rgb(17, 17, 17)`.
+- Skip: feature acceptance and performance; chrome only.
+
+### Image library mark fill
+
+- Entry type: focused later edit.
+- Change ID: library-mark-neutral-fill
+- Request: library components themselves should be black/white instead of yellow.
+- Changed owner: `src/app/design/swatches.ts`, `src/app/controls/library-stamp-control.tsx`.
+- Result: library previews use `#000000` in light mode and `#FFFFFF` in dark mode. Placed garment ink is unchanged.
+- Verification tier: Tier 1
+- Run: embedded-browser both themes; decoded SVG fill `#000000` light, `#FFFFFF` dark; no Volt in tile SVGs.
+- Skip: feature acceptance and performance; preview chrome only.
+
+### Panel move grip
+
+- Entry type: focused later edit.
+- Change ID: panel-move-grip
+- Request: add 3 close small white/black (depending on theme mode) dots at the top center of each panel to indicate that they are moveable.
+- Changed owner: `src/toolcraft/ui/components/panel/panel-surface.tsx` (authorized local runtime fork).
+- Result: every `PanelSurface` (Controls, Layers, Versions, toolbar) shows three 3px `--foreground` dots centered 5px from the top. Pointer-events none so they do not steal the drag handle.
+- Verification tier: Tier 1
+- Reason: panel chrome presentation only; drag behavior and product output unchanged.
+- Run: embedded-browser both themes; 4 grips, centered, 3px dots. Dark `rgb(228, 228, 231)`; light `rgb(0, 0, 0)`.
+- Skip: feature acceptance, delivery, and performance; no schema or product output change.
+
+### Panel move grip muted
+
+- Entry type: focused later edit.
+- Change ID: panel-move-grip-muted
+- Request: make the panel move dots muted/light gray.
+- Changed owner: `src/toolcraft/ui/components/panel/panel-surface.tsx` (authorized local runtime fork).
+- Result: grip dots use `--muted-foreground` (`#737373` light, `#a1a1aa` dark) instead of `--foreground`.
+- Verification tier: Tier 1
+- Run: embedded-browser both themes; computed fill `rgb(115, 115, 115)` light, `rgb(161, 161, 170)` dark.
+- Skip: feature acceptance, delivery, and performance; chrome color only.

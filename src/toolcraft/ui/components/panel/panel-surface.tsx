@@ -20,7 +20,21 @@ const panelContentScrollFadeHeight = 44;
 const panelContentViewportClassName =
   "flex min-h-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain";
 const panelSurfaceClassName =
-  "floating-popup-surface toolcraft-panel-surface isolate border text-[color:var(--popover-foreground)] supports-backdrop-filter:backdrop-blur-2xl supports-backdrop-filter:backdrop-saturate-150";
+  "relative floating-popup-surface toolcraft-panel-surface isolate border text-[color:var(--popover-foreground)] supports-backdrop-filter:backdrop-blur-2xl supports-backdrop-filter:backdrop-saturate-150";
+
+function PanelMoveGrip(): React.JSX.Element {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute top-[5px] left-1/2 z-10 flex -translate-x-1/2 gap-[2px]"
+      data-slot="panel-move-grip"
+    >
+      <span className="size-[3px] rounded-full bg-[color:var(--muted-foreground)]" />
+      <span className="size-[3px] rounded-full bg-[color:var(--muted-foreground)]" />
+      <span className="size-[3px] rounded-full bg-[color:var(--muted-foreground)]" />
+    </div>
+  );
+}
 
 export const PanelSurface = React.forwardRef<
   HTMLDivElement,
@@ -32,6 +46,7 @@ export const PanelSurface = React.forwardRef<
       ref={ref}
       className={cn(panelSurfaceClassName, className)}
     >
+      <PanelMoveGrip />
       {children}
     </div>
   );

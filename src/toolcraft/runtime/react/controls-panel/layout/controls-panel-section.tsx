@@ -68,7 +68,12 @@ function renderControlsPanelSectionTitle(
 
   return (
     <span className="inline-flex items-center gap-1.5">
-      <img alt="" aria-hidden="true" className="size-3.5 shrink-0" src={iconSrc} />
+      <img
+        alt=""
+        aria-hidden="true"
+        className="size-3.5 shrink-0 dark:brightness-0 dark:invert"
+        src={iconSrc}
+      />
       {title}
     </span>
   );

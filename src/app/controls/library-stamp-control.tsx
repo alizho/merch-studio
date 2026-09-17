@@ -11,20 +11,28 @@
  */
 
 import * as React from "react";
-import type { ToolcraftCustomControlRendererProps } from "@/toolcraft/runtime/react";
+import {
+  useToolcraftTheme,
+  type ToolcraftCustomControlRendererProps,
+} from "@/toolcraft/runtime/react";
 import { ImagePicker } from "@/toolcraft/ui";
 
 import { placeMark } from "../actions/place-component";
-import { MARK_ITEMS } from "../design/swatches";
+import { markLibraryItems } from "../design/swatches";
 
 export function LibraryStampControl(
   props: ToolcraftCustomControlRendererProps,
 ): React.JSX.Element {
   const { dispatch, name, setValue, state, value } = props;
+  const { resolvedTheme } = useToolcraftTheme();
+  const items = React.useMemo(
+    () => markLibraryItems(resolvedTheme),
+    [resolvedTheme],
+  );
 
   return (
     <ImagePicker
-      items={MARK_ITEMS}
+      items={items}
       name={name}
       onValueChange={(markId) => {
         setValue(markId);
