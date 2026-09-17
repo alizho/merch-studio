@@ -275,11 +275,15 @@ export function ControlsPanel({
     [dispatch],
   );
 
-  if (!controlsPanel || resolvedPanelState.hidden) {
+  if (!controlsPanel) {
     return null;
   }
 
   const placement = panelPlacement ?? (framed ? "frame" : "surface");
+
+  if (placement === "surface" && resolvedPanelState.hidden) {
+    return null;
+  }
   const renderedSections = selection.visibleSections
     .filter(({ section }) =>
       section.id !== toolcraftRuntimeDefaultsSectionId || versions !== null,
@@ -370,6 +374,7 @@ export function ControlsPanel({
 
   return (
     <PanelContainer
+      hidden={resolvedPanelState.hidden}
       onPanelStateChange={panelBinding.onPanelStateChange}
       panelState={resolvedPanelState}
       panelType="controls"

@@ -59,6 +59,16 @@ export const panelSnapAnimation = {
   ease: [0.22, 1, 0.36, 1],
 } as const;
 
+export const panelPresenceTransition = {
+  duration: 0.22,
+  ease: [0.19, 1, 0.22, 1],
+} as const;
+
+export const panelPresenceVariants = {
+  hidden: { opacity: 0, scale: 0.96 },
+  visible: { opacity: 1, scale: 1 },
+} as const;
+
 export const panelDragIgnoredTargetSelector = [
   ".app-no-drag",
   "a[href]",

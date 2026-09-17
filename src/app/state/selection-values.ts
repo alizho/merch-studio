@@ -10,10 +10,22 @@ import {
   DEFAULT_ASCII_CHARSET,
   DEFAULT_CUSTOM_INK_HEX,
   DEFAULT_EFFECT_AMOUNT,
+  DEFAULT_EFFECT_BLACK_POINT,
+  DEFAULT_EFFECT_BLUR,
+  DEFAULT_EFFECT_GAMMA,
+  DEFAULT_EFFECT_WHITE_POINT,
   DEFAULT_INK_COLORWAY_ID,
   DEFAULT_TYPOGRAPHY,
   MAX_EFFECT_AMOUNT,
+  MAX_EFFECT_BLACK_POINT,
+  MAX_EFFECT_BLUR,
+  MAX_EFFECT_GAMMA,
+  MAX_EFFECT_WHITE_POINT,
   MIN_EFFECT_AMOUNT,
+  MIN_EFFECT_BLACK_POINT,
+  MIN_EFFECT_BLUR,
+  MIN_EFFECT_GAMMA,
+  MIN_EFFECT_WHITE_POINT,
   readHexColor,
   resolveDitherMode,
   resolveFace,
@@ -32,12 +44,16 @@ export type PanelValues = {
   backgroundRemoval: boolean;
   effectAmount: number;
   effectAscii: boolean;
+  effectBlackPoint: number;
+  effectBlur: number;
   effectCharset: string;
   effectDither: DitherMode;
+  effectGamma: number;
   effectInk: string;
   effectInkHex: string;
   effectPixelate: boolean;
   effectRecolor: boolean;
+  effectWhitePoint: number;
   face: string;
   ink: string;
   inkHex: string;
@@ -62,6 +78,22 @@ function clampEffectAmount(value: number): number {
   return Math.max(MIN_EFFECT_AMOUNT, Math.min(MAX_EFFECT_AMOUNT, value));
 }
 
+function clampEffectBlur(value: number): number {
+  return Math.max(MIN_EFFECT_BLUR, Math.min(MAX_EFFECT_BLUR, value));
+}
+
+function clampEffectGamma(value: number): number {
+  return Math.max(MIN_EFFECT_GAMMA, Math.min(MAX_EFFECT_GAMMA, value));
+}
+
+function clampEffectBlackPoint(value: number): number {
+  return Math.max(MIN_EFFECT_BLACK_POINT, Math.min(MAX_EFFECT_BLACK_POINT, value));
+}
+
+function clampEffectWhitePoint(value: number): number {
+  return Math.max(MIN_EFFECT_WHITE_POINT, Math.min(MAX_EFFECT_WHITE_POINT, value));
+}
+
 export function panelFromValues(
   values: Record<string, unknown>,
 ): PanelValues {
@@ -71,11 +103,23 @@ export function panelFromValues(
       readNumber(values[TARGETS.selectedEffectAmount], DEFAULT_EFFECT_AMOUNT),
     ),
     effectAscii: values[TARGETS.selectedEffectAscii] === true,
+    effectBlackPoint: clampEffectBlackPoint(
+      readNumber(
+        values[TARGETS.selectedEffectBlackPoint],
+        DEFAULT_EFFECT_BLACK_POINT,
+      ),
+    ),
+    effectBlur: clampEffectBlur(
+      readNumber(values[TARGETS.selectedEffectBlur], DEFAULT_EFFECT_BLUR),
+    ),
     effectCharset: readString(
       values[TARGETS.selectedEffectCharset],
       DEFAULT_ASCII_CHARSET,
     ),
     effectDither: resolveDitherMode(values[TARGETS.selectedEffectDither]),
+    effectGamma: clampEffectGamma(
+      readNumber(values[TARGETS.selectedEffectGamma], DEFAULT_EFFECT_GAMMA),
+    ),
     effectInk: readString(
       values[TARGETS.selectedEffectInk],
       DEFAULT_INK_COLORWAY_ID,
@@ -86,6 +130,12 @@ export function panelFromValues(
     ),
     effectPixelate: values[TARGETS.selectedEffectPixelate] === true,
     effectRecolor: values[TARGETS.selectedEffectRecolor] === true,
+    effectWhitePoint: clampEffectWhitePoint(
+      readNumber(
+        values[TARGETS.selectedEffectWhitePoint],
+        DEFAULT_EFFECT_WHITE_POINT,
+      ),
+    ),
     face: resolveFace(values[TARGETS.selectedFace]).id,
     ink: readString(values[TARGETS.selectedInk], DEFAULT_INK_COLORWAY_ID),
     inkHex: readHexColor(values[TARGETS.selectedInkColor], DEFAULT_CUSTOM_INK_HEX),
@@ -106,12 +156,16 @@ export function panelFromRecord(record: ComponentRecord): PanelValues {
     backgroundRemoval: record.backgroundRemoval,
     effectAmount: record.effectAmount,
     effectAscii: record.effectAscii,
+    effectBlackPoint: record.effectBlackPoint,
+    effectBlur: record.effectBlur,
     effectCharset: record.effectCharset,
     effectDither: record.effectDither,
+    effectGamma: record.effectGamma,
     effectInk: record.effectInkId,
     effectInkHex: record.effectInkHex,
     effectPixelate: record.effectPixelate,
     effectRecolor: record.effectRecolor,
+    effectWhitePoint: record.effectWhitePoint,
     face: typography.faceId,
     ink: record.inkId,
     inkHex: record.inkHex,
@@ -130,12 +184,16 @@ export function panelEqual(left: PanelValues, right: PanelValues): boolean {
     left.backgroundRemoval === right.backgroundRemoval &&
     left.effectAmount === right.effectAmount &&
     left.effectAscii === right.effectAscii &&
+    left.effectBlackPoint === right.effectBlackPoint &&
+    left.effectBlur === right.effectBlur &&
     left.effectCharset === right.effectCharset &&
     left.effectDither === right.effectDither &&
+    left.effectGamma === right.effectGamma &&
     left.effectInk === right.effectInk &&
     left.effectInkHex === right.effectInkHex &&
     left.effectPixelate === right.effectPixelate &&
     left.effectRecolor === right.effectRecolor &&
+    left.effectWhitePoint === right.effectWhitePoint &&
     left.face === right.face &&
     left.ink === right.ink &&
     left.inkHex === right.inkHex &&
@@ -170,13 +228,20 @@ export function applyPanelToRecord(
     ...record,
     backgroundRemoval: record.kind === "image" ? panel.backgroundRemoval : false,
     effectAmount: panel.effectAmount,
+    // The Pixelate/ASCII checkboxes are `disabledWhen` the other is on, so a
+    // panel write can only ever turn one of them on; nothing further to
+    // reconcile here.
     effectAscii: acceptsEffects && panel.effectAscii,
+    effectBlackPoint: panel.effectBlackPoint,
+    effectBlur: panel.effectBlur,
     effectCharset: panel.effectCharset,
     effectDither: panel.effectDither,
+    effectGamma: panel.effectGamma,
     effectInkHex: panel.effectInkHex,
     effectInkId: panel.effectInk,
     effectPixelate: acceptsEffects && panel.effectPixelate,
     effectRecolor: acceptsEffects && panel.effectRecolor,
+    effectWhitePoint: panel.effectWhitePoint,
     inkHex: panel.inkHex,
     inkId: panel.ink,
     rotation: panel.rotation,
@@ -197,7 +262,15 @@ export function panelWrites(
     [TARGETS.selectedEffectPixelate, panel.effectPixelate],
     [TARGETS.selectedEffectRecolor, panel.effectRecolor],
     [TARGETS.selectedEffectAscii, panel.effectAscii],
+    [
+      TARGETS.selectedEffectModeActive,
+      panel.effectPixelate || panel.effectAscii,
+    ],
     [TARGETS.selectedEffectAmount, panel.effectAmount],
+    [TARGETS.selectedEffectBlur, panel.effectBlur],
+    [TARGETS.selectedEffectGamma, panel.effectGamma],
+    [TARGETS.selectedEffectBlackPoint, panel.effectBlackPoint],
+    [TARGETS.selectedEffectWhitePoint, panel.effectWhitePoint],
     [TARGETS.selectedEffectCharset, panel.effectCharset],
     [TARGETS.selectedEffectDither, panel.effectDither],
     [TARGETS.selectedEffectInk, panel.effectInk],

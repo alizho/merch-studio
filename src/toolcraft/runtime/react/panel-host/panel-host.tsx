@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  AnimatePresence,
   animate,
   motion,
   useDragControls,
@@ -15,6 +16,8 @@ import {
   panelDragIgnoredTargetSelector,
   panelDragTransition,
   panelHostConfig,
+  panelPresenceTransition,
+  panelPresenceVariants,
   panelSnapAnimation,
 } from "./panel-host-config";
 import {
@@ -250,6 +253,7 @@ export function PanelHost({
   children,
   className,
   dragMode,
+  hidden = false,
   innerClassName,
   onPositionChange,
   onPlacementChange,
@@ -323,34 +327,47 @@ export function PanelHost({
   };
 
   return (
-    <div className={cn("pointer-events-none", config.wrapperClassName, className)} style={style}>
-      <motion.div
-        className={cn("pointer-events-auto", isDragging && "cursor-grabbing", innerClassName)}
-        data-dragging={isDragging ? "true" : "false"}
-        data-drag-mode={resolvedDragMode}
-        data-panel-id={resolvedPanelId}
-        data-panel-offset-x={position?.x ?? 0}
-        data-panel-offset-y={position?.y ?? 0}
-        data-panel-snap-edge={snapEdge}
-        data-panel-type={panelType}
-        data-slot="toolcraft-runtime-panel-host"
-        data-snap-edges={resolvedSnap?.edges.join(" ")}
-        drag
-        dragControls={dragControls}
-        dragElastic={0}
-        dragListener={false}
-        dragMomentum={false}
-        dragTransition={panelDragTransition}
-        onDoubleClick={handleDoubleClick}
-        onDragEnd={handleDragEnd}
-        onDragStart={() => setIsDragging(true)}
-        onPointerDown={handlePointerDown}
-        ref={panelRef}
-        style={{ x, y }}
-      >
-        {children}
-      </motion.div>
-    </div>
+    <AnimatePresence>
+      {hidden ? null : (
+        <motion.div
+          animate="visible"
+          className={cn("pointer-events-none", config.wrapperClassName, className)}
+          exit="hidden"
+          initial="hidden"
+          key="panel-host"
+          style={style}
+          transition={panelPresenceTransition}
+          variants={panelPresenceVariants}
+        >
+          <motion.div
+            className={cn("pointer-events-auto", isDragging && "cursor-grabbing", innerClassName)}
+            data-dragging={isDragging ? "true" : "false"}
+            data-drag-mode={resolvedDragMode}
+            data-panel-id={resolvedPanelId}
+            data-panel-offset-x={position?.x ?? 0}
+            data-panel-offset-y={position?.y ?? 0}
+            data-panel-snap-edge={snapEdge}
+            data-panel-type={panelType}
+            data-slot="toolcraft-runtime-panel-host"
+            data-snap-edges={resolvedSnap?.edges.join(" ")}
+            drag
+            dragControls={dragControls}
+            dragElastic={0}
+            dragListener={false}
+            dragMomentum={false}
+            dragTransition={panelDragTransition}
+            onDoubleClick={handleDoubleClick}
+            onDragEnd={handleDragEnd}
+            onDragStart={() => setIsDragging(true)}
+            onPointerDown={handlePointerDown}
+            ref={panelRef}
+            style={{ x, y }}
+          >
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -408,6 +425,7 @@ export function PanelContainer({
   children,
   className,
   dragMode,
+  hidden = false,
   onPanelStateChange,
   panelClassName,
   panelState,
@@ -418,7 +436,7 @@ export function PanelContainer({
   const config = panelHostConfig[panelType];
 
   if (placement === "surface") {
-    return <>{children}</>;
+    return hidden ? <></> : <>{children}</>;
   }
 
   if (placement === "floating") {
@@ -426,6 +444,7 @@ export function PanelContainer({
       <PanelHost
         className={panelClassName}
         dragMode={dragMode}
+        hidden={hidden}
         onPlacementChange={onPanelStateChange}
         panelType={panelType}
         position={panelState?.offset}
@@ -446,6 +465,7 @@ export function PanelContainer({
       <PanelHost
         className={panelClassName}
         dragMode={dragMode}
+        hidden={hidden}
         onPlacementChange={onPanelStateChange}
         panelType={panelType}
         position={panelState?.offset}

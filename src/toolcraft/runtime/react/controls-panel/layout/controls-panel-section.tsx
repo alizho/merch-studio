@@ -53,6 +53,7 @@ const controlsPanelSectionIconBySectionId: Record<string, string> = {
   garment: "/icons/garment.png",
   components: "/icons/components.png",
   component: "/icons/selected.png",
+  effects: "/icons/effects.png",
   "runtime.image-export": "/icons/export.png",
 };
 

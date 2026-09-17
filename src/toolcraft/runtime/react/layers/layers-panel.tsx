@@ -210,7 +210,11 @@ export function LayersPanel({
     visibleLayers,
   });
 
-  if (!layersEnabled || resolvedPanelState.hidden) {
+  if (!layersEnabled) {
+    return null;
+  }
+
+  if (placement === "surface" && resolvedPanelState.hidden) {
     return null;
   }
 
@@ -352,6 +356,7 @@ export function LayersPanel({
 
   return (
     <PanelContainer
+      hidden={resolvedPanelState.hidden}
       onPanelStateChange={panelBinding.onPanelStateChange}
       panelState={resolvedPanelState}
       panelType="layers"

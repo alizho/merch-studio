@@ -125,7 +125,9 @@ export function ToolbarPanel({
   const themeEnabled = toolbar.theme;
   const zoomEnabled = toolbar.zoom;
 
-  if (resolvedPanelState.hidden) {
+  const placement = panelPlacement ?? (framed ? "frame" : "surface");
+
+  if (placement === "surface" && resolvedPanelState.hidden) {
     return null;
   }
 
@@ -212,10 +214,11 @@ export function ToolbarPanel({
 
   return (
     <PanelContainer
+      hidden={resolvedPanelState.hidden}
       onPanelStateChange={panelBinding.onPanelStateChange}
       panelState={resolvedPanelState}
       panelType="toolbar"
-      placement={panelPlacement ?? (framed ? "frame" : "surface")}
+      placement={placement}
     >
       {toolbarSurface}
     </PanelContainer>

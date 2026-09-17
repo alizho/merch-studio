@@ -37,3 +37,22 @@
   position: absolute;
   pointer-events: auto;
 }
+
+.selectionFrame {
+  animation: merch-selection-march 1.4s linear infinite;
+}
+
+@keyframes merch-selection-march {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: var(--merch-selection-dash-period);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selectionFrame {
+    animation: none;
+  }
+}

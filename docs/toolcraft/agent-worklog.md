@@ -345,3 +345,54 @@ Protected receipts own initial/performance proof. Later edits record focused che
 - Reason: custom raster ASCII path.
 - Run: unit test `spreads ASCII coverage across the full glyph ramp for contrast`.
 - Skip: measured performance; tonal mapping tweak only.
+
+### Effects section icon
+
+- Entry type: focused later edit.
+- Change ID: effects-section-icon
+- Request: add `/public/icons/effects.png` as the icon for the Effects controls-panel area, same as other areas.
+- Changed owner: `controlsPanelSectionIconBySectionId` in `controls-panel-section.tsx` (`effects` → `/icons/effects.png`).
+- Result: Effects header uses the provided 20×20 asset with the same dark-mode invert treatment as other section icons.
+- Verification tier: Tier 1
+- Reason: section header presentation only; schema/runtime values unchanged.
+- Run: confirm mapping key matches schema section `id: "effects"`.
+- Skip: feature acceptance and measured performance.
+
+### Favicon and OG image
+
+- Entry type: focused later edit.
+- Change ID: favicon-og
+- Request: add `public/og.png` and `public/favicon.png` to the project.
+- Changed owner: `index.html` head tags; assets already in `public/`.
+- Result: favicon + apple-touch-icon point at `/favicon.png`; og/twitter image tags point at `/og.png` (1200×630 PNG) with Infisical Merch Studio alt text.
+- Verification tier: Tier 0
+- Reason: host metadata/branding only; product behavior unchanged.
+- Run: confirm assets exist and HTML references match.
+- Skip: browser acceptance and measured performance.
+- Risks: signed bootstrap `index.html` is intentionally modified; integrity will report it until upstream regeneration. Social crawlers prefer absolute image URLs; path-absolute `/og.png` resolves against the page origin.
+
+### Versions timeline markers
+
+- Entry type: focused later edit.
+- Change ID: versions-timeline-rail
+- Request: small black/white square left of each version (by mode), with a vertical line connecting squares when multiple versions exist.
+- Changed owner: `versions-panel.tsx` list rail.
+- Result: each saved version shows a foreground square; with 2+ versions, 1px segments bridge the list gap into one vertical line.
+- Follow-up: markers were invisible because `bg-foreground` is not emitted in this Tailwind setup (computed background stayed transparent). Switched to `bg-[color:var(--foreground)]` to match layers/timeline paint. Empty history also shows no rail until Save State creates versions. Connectors use `var(--muted-foreground)` and `h-[calc(100%+1.25rem)]` so each segment runs center-to-center through row padding and `gap-1`.
+- Verification tier: Tier 1
+- Reason: versions panel presentation only.
+- Run: live DOM probe — square/line paint after two saves; connector delta to next square center is 0; line bg `rgb(161, 161, 170)`.
+- Skip: feature acceptance and measured performance.
+
+### Canvas garment flip button
+
+- Entry type: focused later edit.
+- Change ID: garment-flip-canvas
+- Request: front/back flip as a button with double curved arrow at the bottom of the active garment.
+- Changed owner: `design-canvas.tsx` flip control; removed Garment panel View segmented; `garment.view` kept via defaults + `additionalValueTargets`.
+- Result: `ArrowsClockwiseIcon` button under the garment toggles front/back. Panel no longer mirrors the flip. Ownership/acceptance/e2e updated for canvas control.
+- Follow-up: opaque `--popover` fill; hover tooltip via public `Tooltip`/`TooltipTrigger`/`TooltipContent` (same pattern as toolbar).
+- Verification tier: Tier 3
+- Reason: canvas interaction + schema control removal + acceptance ownership.
+- Run: browser check flip button presence and plane rotate; update e2e specs.
+- Skip: measured performance.

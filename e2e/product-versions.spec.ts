@@ -8,12 +8,13 @@ test("saved versions restore both faces and uploaded artwork after reload", asyn
   };
   await openSection("Garment");
   await openSection("Components");
-  const front = page.getByRole("button", { name: "Front", exact: true });
-  const back = page.getByRole("button", { name: "Back", exact: true });
-  await front.click();
+  const showFront = () => page.getByRole("button", { name: "Show front", exact: true });
+  const showBack = () => page.getByRole("button", { name: "Show back", exact: true });
+  if (await showBack().isVisible()) await showBack().click();
+  await showFront().click();
   await page.getByRole("button", { name: "Add text", exact: true }).click();
   await page.getByRole("textbox").fill("FRONT SAVED");
-  await back.click();
+  await showBack().click();
   await page.getByRole("button", { name: "Add text", exact: true }).click();
   await page.getByRole("textbox").fill("BACK SAVED");
   // Real browser upload with distinctive opaque artwork.
@@ -44,7 +45,7 @@ test("saved versions restore both faces and uploaded artwork after reload", asyn
   await expect(page.getByRole("button", { name: "Select and move BACK SAVED", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Select and move Artwork", exact: true })).toBeVisible();
   await expect.poll(pixels).toBe(original);
-  await front.click();
+  await showFront().click();
   await expect(page.getByRole("button", { name: "Select and move FRONT SAVED", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Select and move BACK SAVED", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Restore Before restore", exact: true })).toBeVisible();

@@ -303,3 +303,50 @@
   width: 0;
   height: 0;
 }
+
+/**
+ * "Effects" checkbox — Sharp-Corner and Hairline Rules apply: a flat 18x18
+ * box with a 1px border, filled void when checked, with a hand-drawn check
+ * stroke in volt. See /Users/kiwi/Downloads/design.md's `checkbox` token.
+ */
+.merch-checkbox-box {
+  border-radius: 0;
+  transition: transform 100ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.merch-checkbox-box:active {
+  transform: scale(0.92);
+}
+
+.merch-checkbox-check {
+  /* Optical-Centering Rule: the up-right stroke reads right-heavy, so the
+     path sits 0.5 viewBox units left and the svg is nudged back with margin. */
+  margin-left: 1px;
+  stroke-dasharray: 14;
+  stroke-dashoffset: 0;
+  animation: merch-checkbox-draw 220ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes merch-checkbox-draw {
+  from {
+    stroke-dashoffset: 14;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .merch-checkbox-box {
+    transition: none;
+  }
+
+  .merch-checkbox-box:active {
+    transform: none;
+  }
+
+  .merch-checkbox-check {
+    animation: none;
+  }
+}

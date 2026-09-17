@@ -196,13 +196,16 @@ function rasterizeMarkFill(
   };
 }
 
-function paintEffectedImage(
-  ctx: AnyContext,
+/**
+ * Runs the effect chain and reports how far, in box-space pixels, the blur
+ * grew the result past `source`'s own bounds on each axis — the caller needs
+ * this before it sizes the mask surface, so the halo has room to land.
+ */
+function computeEffectedArtwork(
   record: ComponentRecord,
   source: ImportedImage,
   box: Box,
-  padding: number,
-): void {
+): { effected: ImportedImage; marginX: number; marginY: number } {
   const effectInkHex = resolveInkColorway(
     record.effectInkId,
     record.effectInkHex,
@@ -219,10 +222,36 @@ function paintEffectedImage(
     effectInkHex,
     record.effectCharset,
     record.effectDither,
+    record.effectBlur,
+    record.effectGamma,
+    record.effectBlackPoint,
+    record.effectWhitePoint,
   );
+  const marginX =
+    ((effected.width - source.width) / 2) * (box.width / source.width);
+  const marginY =
+    ((effected.height - source.height) / 2) * (box.height / source.height);
 
-  ctx.imageSmoothingEnabled = !(effects.pixelate && !effects.ascii);
-  ctx.drawImage(effected.image, padding, padding, box.width, box.height);
+  return { effected, marginX, marginY };
+}
+
+function paintEffectedImage(
+  ctx: AnyContext,
+  record: ComponentRecord,
+  effected: ImportedImage,
+  box: Box,
+  padding: number,
+  marginX: number,
+  marginY: number,
+): void {
+  ctx.imageSmoothingEnabled = !(record.effectPixelate && !record.effectAscii);
+  ctx.drawImage(
+    effected.image,
+    padding - marginX,
+    padding - marginY,
+    box.width + marginX * 2,
+    box.height + marginY * 2,
+  );
   ctx.imageSmoothingEnabled = true;
 }
 
@@ -266,47 +295,67 @@ export function componentBox(
 }
 
 /**
- * Rasterizes one component into an alpha mask, padded so a treatment can grow
- * past the artwork edge without clipping.
+ * Rasterizes one component into an alpha mask, padded so a treatment (or a
+ * blur growing past the artwork's own edge) can never clip against the
+ * buffer edge. The returned `padding` is what the surface was actually built
+ * with — it can exceed the requested `padding` when blur needs more room,
+ * and callers must use it (not the value they passed in) to place the mask.
  */
 export function buildArtworkMask(
   measureCtx: AnyContext,
   record: ComponentRecord,
   resources: ImageResources,
   padding: number,
-): { mask: Surface; box: Box } | null {
+): { mask: Surface; box: Box; padding: number } | null {
   const box = componentBox(measureCtx, record);
-  const surface = createSurface(
-    box.width + padding * 2,
-    box.height + padding * 2,
-  );
-  const ctx = surface.ctx as AnyContext;
-
-  ctx.fillStyle = "#000000";
 
   if (record.kind === "text") {
+    const surface = createSurface(
+      box.width + padding * 2,
+      box.height + padding * 2,
+    );
+    const ctx = surface.ctx as AnyContext;
+
     ctx.fillStyle = "#000000";
 
     if (!drawTextFill(ctx, record, box, padding)) {
       return null;
     }
 
-    return { box, mask: surface };
+    return { box, mask: surface, padding };
+  }
+
+  if (record.kind === "mark" && hasActiveEffects(record)) {
+    const inkHex = resolveInkColorway(record.inkId, record.inkHex).hex;
+    const raster = rasterizeMarkFill(record, box, inkHex);
+
+    if (!raster) {
+      return null;
+    }
+
+    const { effected, marginX, marginY } = computeEffectedArtwork(
+      record,
+      raster,
+      box,
+    );
+    const totalPadding = padding + Math.ceil(Math.max(marginX, marginY));
+    const surface = createSurface(
+      box.width + totalPadding * 2,
+      box.height + totalPadding * 2,
+    );
+    const ctx = surface.ctx as AnyContext;
+
+    paintEffectedImage(ctx, record, effected, box, totalPadding, marginX, marginY);
+
+    return { box, mask: surface, padding: totalPadding };
   }
 
   if (record.kind === "mark") {
-    if (hasActiveEffects(record)) {
-      const inkHex = resolveInkColorway(record.inkId, record.inkHex).hex;
-      const raster = rasterizeMarkFill(record, box, inkHex);
-
-      if (!raster) {
-        return null;
-      }
-
-      paintEffectedImage(ctx, record, raster, box, padding);
-
-      return { box, mask: surface };
-    }
+    const surface = createSurface(
+      box.width + padding * 2,
+      box.height + padding * 2,
+    );
+    const ctx = surface.ctx as AnyContext;
 
     ctx.fillStyle = "#000000";
 
@@ -314,7 +363,7 @@ export function buildArtworkMask(
       return null;
     }
 
-    return { box, mask: surface };
+    return { box, mask: surface, padding };
   }
 
   const imported = resolveRecordImage(record, resources);
@@ -324,7 +373,19 @@ export function buildArtworkMask(
   }
 
   const cutout = record.backgroundRemoval ? getCutoutImage(imported) : imported;
-  paintEffectedImage(ctx, record, cutout, box, padding);
+  const { effected, marginX, marginY } = computeEffectedArtwork(
+    record,
+    cutout,
+    box,
+  );
+  const totalPadding = padding + Math.ceil(Math.max(marginX, marginY));
+  const surface = createSurface(
+    box.width + totalPadding * 2,
+    box.height + totalPadding * 2,
+  );
+  const ctx = surface.ctx as AnyContext;
 
-  return { box, mask: surface };
+  paintEffectedImage(ctx, record, effected, box, totalPadding, marginX, marginY);
+
+  return { box, mask: surface, padding: totalPadding };
 }

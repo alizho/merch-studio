@@ -140,7 +140,7 @@ export function resolveInkColorway(
 export const CANVAS_WIDTH = 1210;
 export const CANVAS_HEIGHT = 1346;
 
-export type GarmentType = "tee" | "hoodie";
+export type GarmentType = "tee" | "hoodie" | "jeans";
 export type GarmentView = "front" | "back";
 export type Treatment = "print" | "embroidery";
 
@@ -194,6 +194,18 @@ export const GARMENTS: readonly GarmentDefinition[] = [
       front: "/garments/hoodie-front.png",
     },
   },
+  {
+    id: "jeans",
+    label: "Jeans",
+    placement: {
+      back: { height: 480, width: 400, x: 405, y: 260 },
+      front: { height: 480, width: 400, x: 405, y: 280 },
+    },
+    sources: {
+      back: "/garments/jeans-back.png",
+      front: "/garments/jeans-front.png",
+    },
+  },
 ] as const;
 
 export function resolveGarment(id: unknown): GarmentDefinition {
@@ -210,12 +222,13 @@ export function resolveTreatment(value: unknown): Treatment {
 
 /**
  * Effects replace an imported image's pixels before the finish (print/stitch)
- * is applied, and any combination can be on at once: Pixelate dithers to
- * ink-or-empty cells (Bayer, Floyd–Steinberg, or random), Recolor bakes a
- * duotone in the effect ink over whatever that leaves, and ASCII redraws
- * whatever remains as monospace glyphs in the effect ink. That fixed order is
- * also the render order. Live type is unaffected until it is flattened into
- * pixels; library marks rasterize when an effect is on.
+ * is applied. Pixelate dithers to ink-or-empty cells (Bayer, Floyd–Steinberg,
+ * or random) and ASCII redraws the source as monospace glyphs in the effect
+ * ink; both fully replace the image, so only one can be on at a time. Recolor
+ * bakes a duotone in the effect ink and can stack with either. When Pixelate
+ * and Recolor are both on, Pixelate runs first, then Recolor; same for ASCII.
+ * Live type is unaffected until it is flattened into pixels; library marks
+ * rasterize when an effect is on.
  */
 export type ImageEffectToggles = Readonly<{
   ascii: boolean;
@@ -244,6 +257,28 @@ export const MIN_EFFECT_AMOUNT = 3;
 export const MAX_EFFECT_AMOUNT = 48;
 /** ASCII glyph ramp, light to dark; the user can replace it with any characters. */
 export const DEFAULT_ASCII_CHARSET = " .:;=+*#%@@";
+
+/**
+ * Preprocessing run on the source pixels before Pixelate or ASCII samples
+ * them: blur softens noise the 1-bit threshold would otherwise catch, gamma
+ * re-curves midtones, and black/white point re-anchor the tonal range the
+ * threshold reads coverage from.
+ */
+export const DEFAULT_EFFECT_BLUR = 0;
+export const MIN_EFFECT_BLUR = 0;
+export const MAX_EFFECT_BLUR = 20;
+
+export const DEFAULT_EFFECT_GAMMA = 1;
+export const MIN_EFFECT_GAMMA = 0.2;
+export const MAX_EFFECT_GAMMA = 3;
+
+export const DEFAULT_EFFECT_BLACK_POINT = 0;
+export const MIN_EFFECT_BLACK_POINT = 0;
+export const MAX_EFFECT_BLACK_POINT = 255;
+
+export const DEFAULT_EFFECT_WHITE_POINT = 255;
+export const MIN_EFFECT_WHITE_POINT = 0;
+export const MAX_EFFECT_WHITE_POINT = 255;
 
 export type FaceDefinition = {
   /** CSS/canvas family name registered through the FontFace API. */

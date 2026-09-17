@@ -36,6 +36,7 @@ import {
 import { assertToolcraftAppModulePorts } from "./toolcraft-app-port-validation";
 import { useToolcraftPersistenceStatus } from "./use-toolcraft-persistence";
 import { ToolcraftPersistenceConflictNotice } from "./toolcraft-persistence-conflict-notice";
+import { ShareLinkButton } from "./share-link-button";
 
 export type ToolcraftAppComposition = Readonly<{
   canvasContent?: React.ReactNode;
@@ -112,6 +113,7 @@ function ToolcraftAppContent({
       <header className={frameStyles.header} aria-label="Merch Studio">
         <span className={frameStyles.logo} role="img" aria-label="Infisical" />
         <span className={frameStyles.title}>Merch Studio</span>
+        <ShareLinkButton />
       </header>
       <div className={frameStyles.workspace} data-toolcraft-workspace="">
         {surfaces.canvas.enabled ? (

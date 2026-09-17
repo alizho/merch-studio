@@ -4,16 +4,18 @@
  * Product output for the canvas.
  *
  * Draws the garment and its components through the same `drawDesign` pass the
- * PNG export uses, and mounts the product handles over it. No app chrome lives
- * here: panels, toolbar, and upload affordances stay runtime-owned.
+ * PNG export uses, and mounts the product handles plus the front/back flip
+ * control over it. Panels, toolbar, and upload affordances stay runtime-owned.
  */
 
 import * as React from "react";
+import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import {
   useToolcraftDispatch,
   useToolcraftProductSceneFrame,
   useToolcraftSelector,
 } from "@/toolcraft/runtime/react";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@/toolcraft/ui";
 
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "../design/tokens";
 import {
@@ -226,6 +228,15 @@ export function DesignCanvas(): React.JSX.Element | null {
     [dispatch],
   );
 
+  const handleFlipView = React.useCallback(() => {
+    dispatch({
+      label: "Flip garment",
+      target: TARGETS.garmentView,
+      type: "controls.setValue",
+      value: scene.view === "front" ? "back" : "front",
+    });
+  }, [dispatch, scene.view]);
+
   if (frame.kind !== "ready") {
     return null;
   }
@@ -267,6 +278,30 @@ export function DesignCanvas(): React.JSX.Element | null {
         selectedLayerId={editingLayerId}
         zoom={canvasZoom}
       />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label={scene.view === "front" ? "Show back" : "Show front"}
+              className={styles.flipButton}
+              data-merch-garment-flip=""
+              data-merch-interactive=""
+              onClick={handleFlipView}
+              size="icon"
+              style={{
+                transform: `translateX(-50%) scale(${100 / Math.max(canvasZoom, 1)})`,
+              }}
+              type="button"
+              variant="outline"
+            />
+          }
+        >
+          <ArrowsClockwiseIcon aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {scene.view === "front" ? "Show back" : "Show front"}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }

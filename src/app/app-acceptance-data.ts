@@ -56,6 +56,24 @@ export const appProductReadiness: ToolcraftProductReadiness = {
     {
       alternative: {
         reason:
+          "A panel Front/Back control would duplicate the same flip away from the garment being judged.",
+        surface: "panel",
+      },
+      capability: "command",
+      evidence: {
+        detail:
+          "for flipping between front and back of each item, i want it to be a button (double sided curved arrow upwards, if that icon is available) that is at the bottom of whatever garment is active.",
+        source: "user-request",
+      },
+      id: "garment.view",
+      reason:
+        "Front/back is judged against the active garment, so the flip control sits under that garment on the canvas.",
+      surface: "canvas",
+      target: "garment.view",
+    },
+    {
+      alternative: {
+        reason:
           "Typing coordinates cannot show the design against the garment while it moves.",
         surface: "panel",
       },
@@ -274,16 +292,15 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
       file: "e2e/product-garment-flip.spec.ts",
       testName: "browser: garment flips between retained faces and tilts on hover",
     },
-    componentType: "segmented",
+    componentType: "canvas-button",
     evidence: "product-output",
     expectedObservable:
-      "Choosing Back rotates the retained plane to upright back artwork; Front returns it. Pointer proximity tilts the garment subtly, leaving artwork editing planar; reduced motion disables both movements. Each face renders only its own assigned elements, and switching sides clears hidden selection.",
+      "Clicking the flip button under the garment rotates the retained plane to upright back artwork; clicking again returns Front. Pointer proximity tilts the garment subtly, leaving artwork editing planar; reduced motion disables both movements. Each face renders only its own assigned elements, and switching sides clears hidden selection.",
     fixture: "garment art for both views",
     id: "garment.view",
-    kind: "control",
-    optionCoverage: "each-visible-item",
+    kind: "runtime",
     target: "garment.view",
-    userAction: "Choose Front, then Back.",
+    userAction: "Click the flip button under the garment, then click it again.",
   },
   {
     automated: true,
@@ -789,23 +806,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         },
         {
           reason:
-            "The view changes which side of the same garment is drawn, and owns that outcome alone.",
-          role: "parameter",
-          target: "garment.view",
-        },
-        {
-          reason:
             "The colorway tints the garment and affects nothing else in the panel.",
           role: "parameter",
           target: "garment.color",
         },
       ],
       groupingReason:
-        "Garment type, view, colorway, and the custom dye describe the blank being printed, so they reset and read as one decision.",
+        "Garment type, colorway, and the custom dye describe the blank being printed, so they reset and read as one decision. Front/back lives under the garment on the canvas.",
       id: "garment",
       targets: [
         "garment.type",
-        "garment.view",
         "garment.color",
         "garment.customColor",
       ],

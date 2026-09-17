@@ -48,6 +48,7 @@ export type PanelHostProps = {
   children: React.ReactNode;
   className?: string;
   dragMode?: PanelDragMode;
+  hidden?: boolean;
   innerClassName?: string;
   onPlacementChange?: (placement: PanelSnapPlacement) => void;
   onPositionChange?: (position: PanelPoint) => void;
@@ -68,6 +69,7 @@ export type PanelContainerProps = {
   children: React.ReactNode;
   className?: string;
   dragMode?: PanelDragMode;
+  hidden?: boolean;
   onPanelStateChange?: PanelStateChange;
   panelClassName?: string;
   panelState?: ToolcraftPanelState;

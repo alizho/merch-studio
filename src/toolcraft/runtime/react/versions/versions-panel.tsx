@@ -16,6 +16,7 @@ export function VersionsPanel() {
     setCollapsed(!collapsed);
   };
   if (!versions) return null;
+  const versionCount = versions.versions.length;
   return <PanelHost panelType="layers" panelId="versions" position={position}
     onPositionChange={setPosition} snap={{ edges: ["left", "right", "bottom"], margin: 10 }}
     style={{ top: "auto", bottom: 10, left: 10, height: collapsed ? expandedHeight : undefined }}>
@@ -37,18 +38,35 @@ export function VersionsPanel() {
       {versions.error && <div className="px-3 pb-2"><FieldError role="alert">{versions.error}</FieldError></div>}
       {versions.message && <div className="px-3 pb-2"><FieldDescription role="status">{versions.message}</FieldDescription></div>}
       <ol aria-label="Saved versions" className="flex flex-col gap-1 p-1">
-        {versions.versions.map((version) => <li key={version.id} className="flex items-center justify-between gap-2 px-2 py-2">
-          <div className="min-w-0"><div className="text-xs font-medium">{version.name}</div>
-            <time className="text-[10px] opacity-60" dateTime={new Date(version.createdAt).toISOString()}>
-              {new Date(version.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit" })}
-            </time>
-          </div>
-          <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" disabled={versions.busy} aria-label={`Restore ${version.name}`} onClick={() => versions.restore(version)}>Restore</Button>
-          <Button variant="ghost" size="icon-sm" disabled={versions.busy} aria-label={`Delete ${version.name}`} onClick={() => versions.remove(version)}><TrashIcon /></Button>
-          </div>
-        </li>)}
-        {versions.versions.length === 0 && <li className="px-2 pb-3 text-xs opacity-60">{versions.ready ? "Save a state to start your history." : "Loading versions…"}</li>}
+        {versions.versions.map((version, index) => {
+          const showTimeline = versionCount > 1;
+          return (
+            <li key={version.id} className="flex items-stretch justify-between gap-2 px-2 py-2">
+              <div className="flex min-w-0 flex-1 items-stretch gap-2">
+                <span
+                  aria-hidden="true"
+                  className="relative flex w-1.5 shrink-0 justify-center"
+                >
+                  <span className="absolute top-1/2 z-10 size-1.5 -translate-y-1/2 bg-[color:var(--foreground)]" />
+                  {showTimeline && index < versionCount - 1 ? (
+                    <span className="absolute left-1/2 top-1/2 z-0 h-[calc(100%+1.25rem)] w-px -translate-x-1/2 bg-[color:var(--muted-foreground)]" />
+                  ) : null}
+                </span>
+                <div className="flex min-w-0 flex-col justify-center">
+                  <div className="text-xs font-medium">{version.name}</div>
+                  <time className="text-[10px] opacity-60" dateTime={new Date(version.createdAt).toISOString()}>
+                    {new Date(version.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit" })}
+                  </time>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" disabled={versions.busy} aria-label={`Restore ${version.name}`} onClick={() => versions.restore(version)}>Restore</Button>
+                <Button variant="ghost" size="icon-sm" disabled={versions.busy} aria-label={`Delete ${version.name}`} onClick={() => versions.remove(version)}><TrashIcon /></Button>
+              </div>
+            </li>
+          );
+        })}
+        {versionCount === 0 && <li className="px-2 pb-3 text-xs opacity-60">{versions.ready ? "Save a state to start your history." : "Loading versions…"}</li>}
       </ol>
     </PanelContentSurface>}
   </PanelSurface></PanelHost>;

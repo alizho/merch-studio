@@ -111,7 +111,10 @@ function tintedGarment(
  * so dragging and rotating reuse the cached buffer instead of re-running the
  * stitch or weave passes every frame.
  */
-const treatedCache = new Map<string, { box: Box; surface: Surface }>();
+const treatedCache = new Map<
+  string,
+  { box: Box; surface: Surface; padding: number }
+>();
 const imageSourceIds = new WeakMap<object, number>();
 let nextImageSourceId = 1;
 
@@ -157,6 +160,9 @@ function treatedCacheKey(
     (record.effectPixelate || record.effectRecolor || record.effectAscii)
       ? [record.effectInkId, record.effectInkId === CUSTOM_COLORWAY_ID ? record.effectInkHex : ""].join(",")
       : "",
+    hasActiveEffects(record) && (record.effectPixelate || record.effectAscii)
+      ? [record.effectBlur, record.effectGamma, record.effectBlackPoint, record.effectWhitePoint].join(",")
+      : "",
     record.rasterDataUrl ?? "",
     imageSourceId(resolveRecordImage(record, resources)?.image),
     record.text ?? "",
@@ -185,17 +191,23 @@ function drawComponent(
   scene: DesignScene,
   resources: SceneResources,
 ): void {
-  const padding = treatmentPadding(record.treatment);
   const key = treatedCacheKey(record, resources);
   const cached = treatedCache.get(key);
   let treated: Surface;
   let box: Box;
+  let padding: number;
 
   if (cached) {
     treated = cached.surface;
     box = cached.box;
+    padding = cached.padding;
   } else {
-    const built = buildArtworkMask(measureCtx, record, resources, padding);
+    const built = buildArtworkMask(
+      measureCtx,
+      record,
+      resources,
+      treatmentPadding(record.treatment),
+    );
 
     if (!built) {
       return;
@@ -219,12 +231,13 @@ function drawComponent(
       record.kind === "image" || hasActiveEffects(record),
     );
     box = built.box;
+    padding = built.padding;
 
     if (treatedCache.size > 64) {
       treatedCache.clear();
     }
 
-    treatedCache.set(key, { box, surface: treated });
+    treatedCache.set(key, { box, surface: treated, padding });
   }
 
   target.save();

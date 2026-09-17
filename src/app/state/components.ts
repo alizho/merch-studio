@@ -15,10 +15,22 @@ import {
   DEFAULT_ASCII_CHARSET,
   DEFAULT_CUSTOM_INK_HEX,
   DEFAULT_EFFECT_AMOUNT,
+  DEFAULT_EFFECT_BLACK_POINT,
+  DEFAULT_EFFECT_BLUR,
+  DEFAULT_EFFECT_GAMMA,
+  DEFAULT_EFFECT_WHITE_POINT,
   DEFAULT_INK_COLORWAY_ID,
   DEFAULT_TYPOGRAPHY,
   MAX_EFFECT_AMOUNT,
+  MAX_EFFECT_BLACK_POINT,
+  MAX_EFFECT_BLUR,
+  MAX_EFFECT_GAMMA,
+  MAX_EFFECT_WHITE_POINT,
   MIN_EFFECT_AMOUNT,
+  MIN_EFFECT_BLACK_POINT,
+  MIN_EFFECT_BLUR,
+  MIN_EFFECT_GAMMA,
+  MIN_EFFECT_WHITE_POINT,
   readHexColor,
   resolveDitherMode,
   resolveGarmentView,
@@ -41,12 +53,18 @@ export const TARGETS = {
   selectedCase: "selectedLayer.case",
   selectedEffectAmount: "selectedLayer.effectAmount",
   selectedEffectAscii: "selectedLayer.effectAscii",
+  selectedEffectBlackPoint: "selectedLayer.effectBlackPoint",
+  selectedEffectBlur: "selectedLayer.effectBlur",
   selectedEffectCharset: "selectedLayer.effectCharset",
   selectedEffectDither: "selectedLayer.effectDither",
+  selectedEffectGamma: "selectedLayer.effectGamma",
   selectedEffectInk: "selectedLayer.effectInk",
   selectedEffectInkColor: "selectedLayer.effectInkColor",
+  /** Derived Pixelate-or-ASCII flag, mirrored by `use-selection-sync.ts` so applicability can gate on one target instead of an OR across two. */
+  selectedEffectModeActive: "selectedLayer.effectModeActive",
   selectedEffectPixelate: "selectedLayer.effectPixelate",
   selectedEffectRecolor: "selectedLayer.effectRecolor",
+  selectedEffectWhitePoint: "selectedLayer.effectWhitePoint",
   selectedFace: "selectedLayer.face",
   selectedInk: "selectedLayer.ink",
   selectedInkColor: "selectedLayer.inkColor",
@@ -76,22 +94,30 @@ export type ComponentRecord = {
   centerY: number;
   /** Pixelate/ASCII cell size in canvas px. */
   effectAmount: number;
-  /** Redraws the image as monospace glyphs; stacks with Pixelate and Recolor. */
+  /** Redraws the image as monospace glyphs; mutually exclusive with Pixelate. */
   effectAscii: boolean;
+  /** Preprocessing tonal floor (0-255), read before Pixelate/ASCII threshold. */
+  effectBlackPoint: number;
+  /** Preprocessing gaussian blur radius in canvas px, read before Pixelate/ASCII. */
+  effectBlur: number;
   /** ASCII's glyph ramp, light to dark; user-editable, defaults to a tonal set. */
   effectCharset: string;
   /** Bayer, Floyd–Steinberg, or random kernel used while Pixelate is on. */
   effectDither: DitherMode;
+  /** Preprocessing gamma curve, read before Pixelate/ASCII threshold. */
+  effectGamma: number;
   /**
    * The effect's own custom ink, kept separate from the component's general
    * ink (which images never expose) so Recolor/ASCII have a color to draw in.
    */
   effectInkHex: string;
   effectInkId: string;
-  /** 1-bit dither of the image into ink or empty cells; stacks with Recolor and ASCII. */
+  /** 1-bit dither of the image into ink or empty cells; mutually exclusive with ASCII. */
   effectPixelate: boolean;
   /** Bakes a duotone in the effect ink; stacks with Pixelate and ASCII. */
   effectRecolor: boolean;
+  /** Preprocessing tonal ceiling (0-255), read before Pixelate/ASCII threshold. */
+  effectWhitePoint: number;
   height: number;
   /**
    * The component's custom ink, kept per component so switching a component to
@@ -196,12 +222,35 @@ export function readComponentRecord(
         readNumber(value.effectAmount, DEFAULT_EFFECT_AMOUNT),
       ),
     ),
-    effectAscii: effectsApplyToKind(kind) && value.effectAscii === true,
+    // Pixelate and ASCII are mutually exclusive; a legacy record with both
+    // set (from before that rule) keeps Pixelate and drops ASCII.
+    effectAscii:
+      effectsApplyToKind(kind) &&
+      value.effectAscii === true &&
+      value.effectPixelate !== true,
+    effectBlackPoint: Math.max(
+      MIN_EFFECT_BLACK_POINT,
+      Math.min(
+        MAX_EFFECT_BLACK_POINT,
+        readNumber(value.effectBlackPoint, DEFAULT_EFFECT_BLACK_POINT),
+      ),
+    ),
+    effectBlur: Math.max(
+      MIN_EFFECT_BLUR,
+      Math.min(MAX_EFFECT_BLUR, readNumber(value.effectBlur, DEFAULT_EFFECT_BLUR)),
+    ),
     effectCharset:
       typeof value.effectCharset === "string" && value.effectCharset.length > 0
         ? value.effectCharset
         : DEFAULT_ASCII_CHARSET,
     effectDither: resolveDitherMode(value.effectDither),
+    effectGamma: Math.max(
+      MIN_EFFECT_GAMMA,
+      Math.min(
+        MAX_EFFECT_GAMMA,
+        readNumber(value.effectGamma, DEFAULT_EFFECT_GAMMA),
+      ),
+    ),
     effectInkHex: readHexColor(value.effectInkHex, DEFAULT_CUSTOM_INK_HEX),
     effectInkId:
       typeof value.effectInkId === "string"
@@ -209,6 +258,13 @@ export function readComponentRecord(
         : DEFAULT_INK_COLORWAY_ID,
     effectPixelate: effectsApplyToKind(kind) && value.effectPixelate === true,
     effectRecolor: effectsApplyToKind(kind) && value.effectRecolor === true,
+    effectWhitePoint: Math.max(
+      MIN_EFFECT_WHITE_POINT,
+      Math.min(
+        MAX_EFFECT_WHITE_POINT,
+        readNumber(value.effectWhitePoint, DEFAULT_EFFECT_WHITE_POINT),
+      ),
+    ),
     height: Math.max(1, readNumber(value.height, 120)),
     inkHex: readHexColor(value.inkHex, DEFAULT_CUSTOM_INK_HEX),
     inkId:

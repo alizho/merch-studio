@@ -17,6 +17,10 @@ import { hexToRgb } from "./raster";
 import {
   DEFAULT_ASCII_CHARSET,
   DEFAULT_DITHER_MODE,
+  DEFAULT_EFFECT_BLACK_POINT,
+  DEFAULT_EFFECT_BLUR,
+  DEFAULT_EFFECT_GAMMA,
+  DEFAULT_EFFECT_WHITE_POINT,
   resolveDitherMode,
   type DitherMode,
   type ImageEffectToggles,
@@ -39,6 +43,147 @@ const BAYER8 = [
   [15, 47, 7, 39, 13, 45, 5, 37],
   [63, 31, 55, 23, 61, 29, 53, 21],
 ] as const;
+
+/**
+ * Levels + gamma as one 256-entry lookup table, applied identically to R/G/B
+ * so hue is untouched. Black/white point stretch the tonal range first (the
+ * photo-editing "Levels" step), then gamma re-curves what that leaves.
+ */
+function buildToneCurve(
+  blackPoint: number,
+  whitePoint: number,
+  gamma: number,
+): Uint8ClampedArray | null {
+  if (blackPoint <= 0 && whitePoint >= 255 && gamma === 1) return null;
+
+  const span = Math.max(1, whitePoint - blackPoint);
+  const exponent = 1 / gamma;
+  const table = new Uint8ClampedArray(256);
+
+  for (let value = 0; value < 256; value += 1) {
+    const leveled = Math.max(0, Math.min(255, ((value - blackPoint) / span) * 255));
+
+    table[value] = 255 * (leveled / 255) ** exponent;
+  }
+
+  return table;
+}
+
+function applyToneCurve(data: Uint8ClampedArray, table: Uint8ClampedArray): void {
+  for (let index = 0; index < data.length; index += 4) {
+    data[index] = table[data[index]!]!;
+    data[index + 1] = table[data[index + 1]!]!;
+    data[index + 2] = table[data[index + 2]!]!;
+  }
+}
+
+/**
+ * Alpha-weighted horizontal + vertical box blur. Weighting by alpha keeps a
+ * cutout's cleared background from bleeding dark fringes into soft edges.
+ */
+function boxBlur(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  radius: number,
+): void {
+  const passRadius = Math.max(1, Math.round(radius));
+
+  boxBlurPass(data, width, height, passRadius, true);
+  boxBlurPass(data, width, height, passRadius, false);
+}
+
+function boxBlurPass(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  radius: number,
+  horizontal: boolean,
+): void {
+  const outer = horizontal ? height : width;
+  const inner = horizontal ? width : height;
+  const source = Uint8ClampedArray.from(data);
+  const stride = horizontal ? 4 : width * 4;
+
+  for (let o = 0; o < outer; o += 1) {
+    const rowStart = horizontal ? o * width * 4 : o * 4;
+
+    for (let i = 0; i < inner; i += 1) {
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+      let alpha = 0;
+      let weight = 0;
+
+      for (let d = -radius; d <= radius; d += 1) {
+        const sampleIndex = i + d;
+
+        if (sampleIndex < 0 || sampleIndex >= inner) continue;
+
+        const offset = rowStart + sampleIndex * stride;
+        const sampleAlpha = source[offset + 3]!;
+        const alphaWeight = sampleAlpha / 255;
+
+        red += source[offset]! * alphaWeight;
+        green += source[offset + 1]! * alphaWeight;
+        blue += source[offset + 2]! * alphaWeight;
+        alpha += sampleAlpha;
+        weight += alphaWeight;
+      }
+
+      const offset = rowStart + i * stride;
+      const sampleCount = Math.min(inner, i + radius + 1) - Math.max(0, i - radius);
+
+      data[offset] = weight > 0 ? red / weight : 0;
+      data[offset + 1] = weight > 0 ? green / weight : 0;
+      data[offset + 2] = weight > 0 ? blue / weight : 0;
+      data[offset + 3] = sampleCount > 0 ? alpha / sampleCount : 0;
+    }
+  }
+}
+
+/**
+ * Blur, then black/white point, then gamma — run once on the full-resolution
+ * source before Pixelate or ASCII samples it down, so the threshold reads a
+ * cleaned-up image rather than raw noise.
+ *
+ * Blur grows the canvas by its radius on every side first, so the soft edge
+ * has empty margin to spread into instead of being clamped against the
+ * source's own bounds. Callers diff the returned size against `source` to
+ * learn how much extra room the blur needs downstream.
+ */
+function preprocessImage(
+  source: SizedImage,
+  blur: number,
+  gamma: number,
+  blackPoint: number,
+  whitePoint: number,
+): SizedImage {
+  const toneCurve = buildToneCurve(blackPoint, whitePoint, gamma);
+
+  if (blur <= 0 && !toneCurve) return source;
+
+  const margin = blur > 0 ? Math.max(1, Math.round(blur)) : 0;
+  const width = source.width + margin * 2;
+  const height = source.height + margin * 2;
+  const ctx = createContext(width, height);
+
+  ctx.drawImage(source.image, margin, margin, source.width, source.height);
+
+  const frame = ctx.getImageData(0, 0, width, height);
+
+  if (blur > 0) {
+    boxBlur(frame.data, width, height, blur);
+  }
+
+  if (toneCurve) {
+    applyToneCurve(frame.data, toneCurve);
+  }
+
+  ctx.putImageData(frame, 0, 0);
+
+  return { height, image: ctx.canvas, width };
+}
 
 function createContext(
   width: number,
@@ -358,11 +503,20 @@ export function getEffectImage(
   inkHex: string,
   charset: string,
   ditherMode: DitherMode = DEFAULT_DITHER_MODE,
+  blur = DEFAULT_EFFECT_BLUR,
+  gamma = DEFAULT_EFFECT_GAMMA,
+  blackPoint = DEFAULT_EFFECT_BLACK_POINT,
+  whitePoint = DEFAULT_EFFECT_WHITE_POINT,
 ): SizedImage {
   if (!effects.pixelate && !effects.recolor && !effects.ascii) return source;
 
   const mode = resolveDitherMode(ditherMode);
+  const preprocessed = effects.pixelate || effects.ascii;
+  const preprocessKey = preprocessed
+    ? `pre:${blur}:${gamma}:${blackPoint}:${whitePoint}`
+    : "";
   const key = [
+    preprocessKey,
     effects.pixelate ? `pixelate:${amount}:${mode}:${inkHex}` : "",
     effects.recolor ? `recolor:${inkHex}` : "",
     effects.ascii ? `ascii:${amount}:${inkHex}:${charset}` : "",
@@ -373,6 +527,10 @@ export function getEffectImage(
   if (cached) return cached;
 
   let result = source;
+
+  if (preprocessed) {
+    result = preprocessImage(result, blur, gamma, blackPoint, whitePoint);
+  }
 
   if (effects.pixelate) result = pixelateImage(result, amount, mode, inkHex);
   if (effects.recolor) result = recolorImage(result, inkHex);

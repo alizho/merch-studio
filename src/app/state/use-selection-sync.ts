@@ -222,6 +222,19 @@ export function useSelectionSync({
         "Edit component",
       );
 
+      // Applicability can only AND predicates, so Pixelate-or-ASCII visibility
+      // reads this mirrored flag instead of two separate booleans.
+      const modeActive = panelNow.effectPixelate || panelNow.effectAscii;
+
+      if (values[TARGETS.selectedEffectModeActive] !== modeActive) {
+        dispatch({
+          history: "skip",
+          target: TARGETS.selectedEffectModeActive,
+          type: "controls.setValue",
+          value: modeActive,
+        });
+      }
+
       return;
     }
 

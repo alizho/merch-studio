@@ -31,12 +31,14 @@ import {
   type ComponentMap,
   type ComponentRecord,
 } from "../state/components";
-import { selectionChromeMetrics } from "./selection-chrome";
+import { selectionChromeMetrics, snapGuideMetrics } from "./selection-chrome";
+import { NO_SNAP_GUIDES, resolveMoveSnap, type SnapGuides } from "./snapping";
 import styles from "./handles.module.css";
 
 const SELECTION_STROKE = "#F7FE62";
 const NODE_FILL = "#0A0A0A";
 const DELETE_GLYPH = "#FFFFFF";
+const SNAP_GUIDE_STROKE = "#A6C83D";
 
 let gestureCounter = 0;
 
@@ -63,6 +65,7 @@ export function Handles({
 }: HandlesProps): React.JSX.Element {
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
   const gestureRef = React.useRef<Gesture | null>(null);
+  const [snapGuides, setSnapGuides] = React.useState<SnapGuides>(NO_SNAP_GUIDES);
   const selected = selectedLayerId ? components[selectedLayerId] : undefined;
 
   /** Canvas units per CSS pixel, so pan and zoom need no viewport state. */
@@ -108,22 +111,38 @@ export function Handles({
       return;
     }
 
-    onChange(
-      gesture.layerId,
-      resolveGestureRecord({
-        box: measure(gesture.origin),
-        gesture,
-        point: toCanvasPoint(event.clientX, event.clientY),
-        shiftKey: event.shiftKey,
-      }),
-      gestureGroup(gesture),
-    );
+    const box = measure(gesture.origin);
+    const proposed = resolveGestureRecord({
+      box,
+      gesture,
+      point: toCanvasPoint(event.clientX, event.clientY),
+      shiftKey: event.shiftKey,
+    });
+
+    if (gesture.kind !== "move") {
+      onChange(gesture.layerId, proposed, gestureGroup(gesture));
+      return;
+    }
+
+    const snapped = resolveMoveSnap({
+      box,
+      components,
+      excludeLayerId: gesture.layerId,
+      layerIds,
+      measure,
+      record: proposed,
+      zoom,
+    });
+
+    setSnapGuides(snapped.guides);
+    onChange(gesture.layerId, snapped.record, gestureGroup(gesture));
   };
 
   const endGesture = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (gestureRef.current) {
       continueGesture(event);
       gestureRef.current = null;
+      setSnapGuides(NO_SNAP_GUIDES);
     }
   };
 
@@ -145,6 +164,7 @@ export function Handles({
   const centerY = selected?.centerY ?? 0;
   const halfHeight = (selectionBox?.height ?? 0) / 2;
   const chrome = selectionChromeMetrics(zoom);
+  const snapChrome = snapGuideMetrics(zoom);
 
   const rotateLocalY = -halfHeight - chrome.rotateOffset;
   const rotateX = centerX - rotateLocalY * sin;
@@ -174,6 +194,7 @@ export function Handles({
         {selected && topEdge ? (
           <g>
             <polygon
+              className={styles.selectionFrame}
               data-merch-selection-frame=""
               fill="none"
               points={corners
@@ -182,6 +203,11 @@ export function Handles({
               stroke={SELECTION_STROKE}
               strokeDasharray={chrome.dash}
               strokeWidth={chrome.strokeWidth}
+              style={
+                {
+                  "--merch-selection-dash-period": chrome.dashPeriod,
+                } as React.CSSProperties
+              }
             />
             <line
               stroke={SELECTION_STROKE}
@@ -245,6 +271,31 @@ export function Handles({
               </g>
             </g>
           </g>
+        ) : null}
+
+        {snapGuides.vertical ? (
+          <line
+            data-merch-snap-guide="vertical"
+            stroke={SNAP_GUIDE_STROKE}
+            strokeDasharray={snapChrome.dash}
+            strokeWidth={snapChrome.strokeWidth}
+            x1={snapGuides.vertical.position}
+            x2={snapGuides.vertical.position}
+            y1={snapGuides.vertical.start}
+            y2={snapGuides.vertical.end}
+          />
+        ) : null}
+        {snapGuides.horizontal ? (
+          <line
+            data-merch-snap-guide="horizontal"
+            stroke={SNAP_GUIDE_STROKE}
+            strokeDasharray={snapChrome.dash}
+            strokeWidth={snapChrome.strokeWidth}
+            x1={snapGuides.horizontal.start}
+            x2={snapGuides.horizontal.end}
+            y1={snapGuides.horizontal.position}
+            y2={snapGuides.horizontal.position}
+          />
         ) : null}
       </svg>
 

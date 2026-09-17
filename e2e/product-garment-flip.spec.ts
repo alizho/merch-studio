@@ -5,11 +5,7 @@ import { expectToolcraftProductObservableToChange } from "./product-observable-h
 test("browser: garment flips between retained faces and tilts on hover", async ({ page }) => {
   await page.goto("/");
   await page.keyboard.press("Enter");
-  const front = page.getByRole("checkbox", { name: "Front", exact: true });
-  if (!await front.isVisible()) {
-    await page.getByRole("button", { name: "Toggle Garment section", exact: true }).click();
-  }
-  const back = page.getByRole("checkbox", { name: "Back", exact: true });
+  const flip = page.getByRole("button", { name: "Show back", exact: true });
   const surface = page.locator("[data-merch-design-surface]");
   const plane = page.locator("[data-merch-plane]");
   const tilt = page.locator("[data-merch-tilt]");
@@ -20,13 +16,13 @@ test("browser: garment flips between retained faces and tilts on hover", async (
       return c.getContext("2d")!.getImageData(c.width / 2, c.height / 2, 1, 1).data[3] > 0;
     }),
   )).toBe(true);
-  await front.click();
+  await expect(flip).toBeVisible();
   const identity = "matrix(1, 0, 0, 1, 0, 0)";
   await expect.poll(() => plane.evaluate((node) => getComputedStyle(node).transform)).toBe(identity);
   const session = await createToolcraftBrowserProofSession(page);
   await expectToolcraftProductObservableToChange(session,
     session.controlAction("garment.view", async () => {
-      await back.click();
+      await flip.click();
       await expect.poll(() => plane.evaluate((node) => {
         const m = new DOMMatrix(getComputedStyle(node).transform);
         return m.m11 < 0.98 && m.m11 > -0.98;
@@ -36,9 +32,10 @@ test("browser: garment flips between retained faces and tilts on hover", async (
 
   // Reverse while still turning: the transition retains the same two canvases.
   const retainedFront = await page.locator('[data-merch-face="front"]').elementHandle();
-  await front.click();
-  await back.click();
-  await front.click();
+  const showFront = page.getByRole("button", { name: "Show front", exact: true });
+  await showFront.click();
+  await page.getByRole("button", { name: "Show back", exact: true }).click();
+  await page.getByRole("button", { name: "Show front", exact: true }).click();
   await expect.poll(() => plane.evaluate((node) => getComputedStyle(node).transform)).toBe(identity);
   expect(await retainedFront!.evaluate((node) => node === document.querySelector('[data-merch-face="front"]'))).toBe(true);
 
@@ -52,7 +49,7 @@ test("browser: garment flips between retained faces and tilts on hover", async (
   await expect.poll(() => tilt.evaluate((node) => getComputedStyle(node).transform)).toBe(identity);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await back.click();
+  await page.getByRole("button", { name: "Show back", exact: true }).click();
   await expect(plane).toHaveCSS("transition-duration", "0s");
   await page.mouse.move(bounds.x + bounds.width * 0.7, bounds.y + bounds.height * 0.3);
   await expect(tilt).toHaveCSS("transform", identity);
@@ -61,7 +58,7 @@ test("browser: garment flips between retained faces and tilts on hover", async (
   // Different records on each side must never paint or expose handles together.
   const facePixels = (side: string) => page.locator(`[data-merch-face="${side}"]`)
     .evaluate((node) => (node as HTMLCanvasElement).toDataURL());
-  await front.click();
+  await page.getByRole("button", { name: "Show front", exact: true }).click();
   const addText = page.getByRole("button", { name: "Add text", exact: true });
   if (!await addText.isVisible()) {
     await page.getByRole("button", { name: "Toggle Components section", exact: true }).click();
@@ -69,7 +66,7 @@ test("browser: garment flips between retained faces and tilts on hover", async (
   await addText.click();
   await page.getByRole("textbox").fill("FRONT ONLY");
   await expect(page.getByRole("button", { name: "Select and move FRONT ONLY", exact: true })).toHaveCount(1);
-  await back.click();
+  await page.getByRole("button", { name: "Show back", exact: true }).click();
   await expect(page.getByRole("button", { name: "Select and move FRONT ONLY", exact: true })).toHaveCount(0);
   const frontPixels = await facePixels("front");
   const emptyBack = await facePixels("back");
@@ -77,7 +74,7 @@ test("browser: garment flips between retained faces and tilts on hover", async (
   await page.getByRole("textbox").fill("BACK ONLY");
   await expect.poll(() => facePixels("back")).not.toBe(emptyBack);
   expect(await facePixels("front")).toBe(frontPixels);
-  await front.click();
+  await page.getByRole("button", { name: "Show front", exact: true }).click();
   await expect(page.getByRole("button", { name: "Select and move BACK ONLY", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Select and move FRONT ONLY", exact: true })).toHaveCount(1);
 });

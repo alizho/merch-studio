@@ -38,6 +38,23 @@
   transform: rotateY(180deg);
 }
 
+.flipButton {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 4;
+  transform-origin: center bottom;
+  background-color: var(--popover);
+  border-color: color-mix(in oklab, var(--border) 28%, transparent);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+
+.flipButton:hover,
+.flipButton:focus-visible,
+.flipButton:active {
+  background-color: var(--popover);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tilt {
     transition: none;

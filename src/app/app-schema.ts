@@ -17,11 +17,23 @@ import {
   DEFAULT_CUSTOM_INK_HEX,
   DEFAULT_DITHER_MODE,
   DEFAULT_EFFECT_AMOUNT,
+  DEFAULT_EFFECT_BLACK_POINT,
+  DEFAULT_EFFECT_BLUR,
+  DEFAULT_EFFECT_GAMMA,
+  DEFAULT_EFFECT_WHITE_POINT,
   DEFAULT_GARMENT_COLORWAY_ID,
   DEFAULT_INK_COLORWAY_ID,
   DEFAULT_TYPOGRAPHY,
   MAX_EFFECT_AMOUNT,
+  MAX_EFFECT_BLACK_POINT,
+  MAX_EFFECT_BLUR,
+  MAX_EFFECT_GAMMA,
+  MAX_EFFECT_WHITE_POINT,
   MIN_EFFECT_AMOUNT,
+  MIN_EFFECT_BLACK_POINT,
+  MIN_EFFECT_BLUR,
+  MIN_EFFECT_GAMMA,
+  MIN_EFFECT_WHITE_POINT,
 } from "./design/tokens";
 import {
   garmentColorwayControlType,
@@ -92,13 +104,12 @@ const whenInkIsCustom = {
 } as const;
 
 /**
- * Effect ink and Detail are shared settings, each read by more than one of
- * the three independent effect toggles below (ink by Recolor and ASCII,
- * Detail by Pixelate and ASCII), so gating either on "the specific toggle
- * that currently needs it" would need an OR across independent booleans that
- * applicability predicates cannot express (predicates only AND). They stay
- * visible for any selected image or mark instead, like Cutout does, so a
- * value set ahead of turning an effect on is not lost or hidden.
+ * Effect ink is a shared setting, read by both Recolor and ASCII, so gating
+ * it on "whichever toggle currently needs it" would need an OR across
+ * independent booleans that applicability predicates cannot express
+ * (predicates only AND). It stays visible for any selected image or mark
+ * instead, like Cutout does, so a value set ahead of turning an effect on is
+ * not lost or hidden.
  */
 const whenEffectInkIsCustom = {
   all: [
@@ -121,6 +132,21 @@ const whenEffectIsAscii = {
   all: [
     { oneOf: ["image", "mark"], target: TARGETS.selectedKind },
     { equals: true, target: TARGETS.selectedEffectAscii },
+  ],
+  mode: "conditional",
+} as const;
+
+/**
+ * Detail and the preprocessing sliders only mean anything once Pixelate or
+ * ASCII will actually read them. Pixelate and ASCII are two independent
+ * booleans and applicability predicates only AND, so `selectedEffectModeActive`
+ * is a mirrored `pixelate || ascii` flag (kept in sync in
+ * `use-selection-sync.ts`) that turns that OR into one target to check.
+ */
+const whenEffectModeActive = {
+  all: [
+    { oneOf: ["image", "mark"], target: TARGETS.selectedKind },
+    { equals: true, target: TARGETS.selectedEffectModeActive },
   ],
   mode: "conditional",
 } as const;
@@ -152,19 +178,9 @@ export const appSchema = defineToolcraft({
                 options: [
                   { label: "T-shirt", value: "tee" },
                   { label: "Hoodie", value: "hoodie" },
+                  { label: "Jeans", value: "jeans" },
                 ],
                 target: TARGETS.garmentType,
-                type: "segmented",
-              },
-              view: {
-                applicability: always,
-                defaultValue: "front",
-                label: "View",
-                options: [
-                  { label: "Front", value: "front" },
-                  { label: "Back", value: "back" },
-                ],
-                target: TARGETS.garmentView,
                 type: "segmented",
               },
               color: {
@@ -340,14 +356,85 @@ export const appSchema = defineToolcraft({
           },
           {
             controls: {
+              effectAmount: {
+                applicability: whenEffectModeActive,
+                defaultValue: DEFAULT_EFFECT_AMOUNT,
+                description:
+                  "Cell size for Pixelate and ASCII; smaller values keep more detail.",
+                label: "Detail",
+                max: MAX_EFFECT_AMOUNT,
+                min: MIN_EFFECT_AMOUNT,
+                sliderValueKind: "continuous",
+                step: 1,
+                target: TARGETS.selectedEffectAmount,
+                type: "slider",
+                unit: "px",
+              },
+              effectBlur: {
+                applicability: whenEffectModeActive,
+                defaultValue: DEFAULT_EFFECT_BLUR,
+                description:
+                  "Softens the source before Pixelate or ASCII reads it, so noise doesn't survive the threshold.",
+                label: "Blur",
+                max: MAX_EFFECT_BLUR,
+                min: MIN_EFFECT_BLUR,
+                sliderValueKind: "continuous",
+                step: 1,
+                target: TARGETS.selectedEffectBlur,
+                type: "slider",
+                unit: "px",
+              },
+              effectGamma: {
+                applicability: whenEffectModeActive,
+                defaultValue: DEFAULT_EFFECT_GAMMA,
+                description:
+                  "Re-curves midtones before Pixelate or ASCII reads them; below 1 darkens, above 1 lightens.",
+                label: "Gamma",
+                max: MAX_EFFECT_GAMMA,
+                min: MIN_EFFECT_GAMMA,
+                sliderValueKind: "continuous",
+                step: 0.1,
+                target: TARGETS.selectedEffectGamma,
+                type: "slider",
+              },
+              effectBlackPoint: {
+                applicability: whenEffectModeActive,
+                defaultValue: DEFAULT_EFFECT_BLACK_POINT,
+                description:
+                  "Tones at or below this become fully empty before Pixelate or ASCII reads them.",
+                label: "Black point",
+                max: MAX_EFFECT_BLACK_POINT,
+                min: MIN_EFFECT_BLACK_POINT,
+                sliderValueKind: "continuous",
+                step: 1,
+                target: TARGETS.selectedEffectBlackPoint,
+                type: "slider",
+              },
+              effectWhitePoint: {
+                applicability: whenEffectModeActive,
+                defaultValue: DEFAULT_EFFECT_WHITE_POINT,
+                description:
+                  "Tones at or above this become fully ink before Pixelate or ASCII reads them.",
+                label: "White point",
+                max: MAX_EFFECT_WHITE_POINT,
+                min: MIN_EFFECT_WHITE_POINT,
+                sliderValueKind: "continuous",
+                step: 1,
+                target: TARGETS.selectedEffectWhitePoint,
+                type: "slider",
+              },
               effectPixelate: {
                 applicability: whenImageOrMarkSelected,
                 defaultValue: false,
                 description:
                   "Halftones the image into ink or empty cells, with no in-between tones.",
+                disabledWhen: {
+                  equals: true,
+                  target: TARGETS.selectedEffectAscii,
+                },
                 label: "Dither",
                 target: TARGETS.selectedEffectPixelate,
-                type: "switch",
+                type: "checkbox",
               },
               effectDither: {
                 applicability: whenPixelateOn,
@@ -376,9 +463,13 @@ export const appSchema = defineToolcraft({
                 defaultValue: false,
                 description:
                   "Replaces the image with monospace characters in the ink below.",
+                disabledWhen: {
+                  equals: true,
+                  target: TARGETS.selectedEffectPixelate,
+                },
                 label: "ASCII",
                 target: TARGETS.selectedEffectAscii,
-                type: "switch",
+                type: "checkbox",
               },
               effectInk: {
                 applicability: whenImageOrMarkSelected,
@@ -396,20 +487,6 @@ export const appSchema = defineToolcraft({
                 target: TARGETS.selectedEffectInkColor,
                 type: "color",
               },
-              effectAmount: {
-                applicability: whenImageOrMarkSelected,
-                defaultValue: DEFAULT_EFFECT_AMOUNT,
-                description:
-                  "Cell size for Pixelate and ASCII; smaller values keep more detail.",
-                label: "Detail",
-                max: MAX_EFFECT_AMOUNT,
-                min: MIN_EFFECT_AMOUNT,
-                sliderValueKind: "continuous",
-                step: 1,
-                target: TARGETS.selectedEffectAmount,
-                type: "slider",
-                unit: "px",
-              },
               effectCharset: {
                 applicability: whenEffectIsAscii,
                 commitMode: "content",
@@ -423,7 +500,7 @@ export const appSchema = defineToolcraft({
               },
             },
             description:
-              "Any combination of Pixelate, Recolor, and ASCII can be on for the selected image or library mark, on top of its finish. Pixelate is 1-bit dither.",
+              "Detail, blur, gamma, and black/white point preprocess the source before Pixelate or ASCII reads it. Recolor can stack with either one. Pixelate and ASCII are mutually exclusive, since both replace the image outright.",
             id: "effects",
             title: "Effects",
           },
@@ -434,7 +511,11 @@ export const appSchema = defineToolcraft({
     persistence: {
       // The component records are app-owned state, so they are named here to
       // ride the runtime's own versioned workspace persistence.
-      additionalValueTargets: [TARGETS.components, TARGETS.selectedKind],
+      additionalValueTargets: [
+        TARGETS.components,
+        TARGETS.garmentView,
+        TARGETS.selectedKind,
+      ],
       storage: "localStorage",
     },
     toolbar: {

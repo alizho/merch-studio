@@ -473,8 +473,9 @@ export function TimelinePanel({
     </motion.div>
   );
 
-  const panel = (
+  return (
     <PanelContainer
+      hidden={resolvedPanelState.hidden}
       onPanelStateChange={panelBinding.onPanelStateChange}
       panelState={resolvedPanelState}
       panelType="timeline"
@@ -482,14 +483,6 @@ export function TimelinePanel({
     >
       {timelineSurface}
     </PanelContainer>
-  );
-
-  return resolvedPanelState.hidden ? (
-    <div data-toolcraft-timeline-panel-hidden="true" hidden>
-      {panel}
-    </div>
-  ) : (
-    panel
   );
 }
 
