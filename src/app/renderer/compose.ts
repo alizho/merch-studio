@@ -191,6 +191,17 @@ function drawComponent(
   scene: DesignScene,
   resources: SceneResources,
 ): void {
+  if (record.kind === "compound") {
+    target.save();
+    target.translate(record.centerX, record.centerY);
+    target.rotate(record.rotation * Math.PI / 180);
+    target.scale(record.width / (record.sourceWidth ?? record.width), record.height / (record.sourceHeight ?? record.height));
+    for (const part of [...(record.parts ?? [])].reverse()) {
+      if (part.visible) drawComponent(target, measureCtx, part.record, scene, resources);
+    }
+    target.restore();
+    return;
+  }
   const key = treatedCacheKey(record, resources);
   const cached = treatedCache.get(key);
   let treated: Surface;

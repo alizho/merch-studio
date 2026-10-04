@@ -12,6 +12,7 @@ import * as React from "react";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import {
   useToolcraftDispatch,
+  useToolcraftLayerEditing,
   useToolcraftProductSceneFrame,
   useToolcraftSelector,
 } from "@/toolcraft/runtime/react";
@@ -25,6 +26,8 @@ import {
   type SceneResources,
 } from "../renderer/compose";
 import { Handles } from "./handles";
+import { groupAncestorChain, groupLeafIds, pointInComponent, resolveClickTarget } from "./group-selection";
+import type { Point } from "./geometry";
 import { useGarmentTilt } from "./use-garment-tilt";
 import { loadProductFaces } from "../design/fonts";
 import { readScene } from "../state/scene";
@@ -72,6 +75,7 @@ function useProductFaces(): boolean {
 export function DesignCanvas(): React.JSX.Element | null {
   const frame = useToolcraftProductSceneFrame();
   const dispatch = useToolcraftDispatch();
+  const editing = useToolcraftLayerEditing();
   const layers = useToolcraftSelector((state) => state.layers);
   const values = useToolcraftSelector((state) => state.values);
   const selectedLayerId = useToolcraftSelector(
@@ -145,13 +149,49 @@ export function DesignCanvas(): React.JSX.Element | null {
     [dispatch, scene.components],
   );
 
-  const handleSelect = React.useCallback(
-    (layerId: string) => {
-      const record = scene.components[layerId];
+  const handleComponentsChange = React.useCallback(
+    (
+      updates: readonly { layerId: string; record: ComponentRecord }[],
+      gesture: string,
+    ) => {
+      let next = scene.components;
+      for (const update of updates) {
+        next = withComponent(next, update.layerId, update.record);
+      }
+      dispatch({
+        history: "merge",
+        historyGroup: gesture,
+        label: "Edit component",
+        target: TARGETS.components,
+        type: "controls.setValue",
+        value: next,
+      });
+    },
+    [dispatch, scene.components],
+  );
 
-      dispatch({ layerId, type: "layers.select" });
+  const [drillPath, setDrillPath] = React.useState<string[]>([]);
 
-      if (!record) {
+  // Self-heals if the selection changes via any path other than a canvas
+  // click (layers panel, delete, undo of the group action, etc.).
+  React.useEffect(() => {
+    if (!drillPath.length) return;
+    if (!selectedLayerId) {
+      setDrillPath([]);
+      return;
+    }
+    const chain = groupAncestorChain(layers, selectedLayerId);
+    if (!drillPath.every((id, index) => chain[index] === id)) setDrillPath([]);
+  }, [selectedLayerId, layers, drillPath]);
+
+  const selectResolved = React.useCallback(
+    (targetId: string, nextDrillPath: string[], additive: boolean) => {
+      const record = scene.components[targetId];
+
+      dispatch({ additive, layerId: targetId, type: "layers.select" });
+      setDrillPath(nextDrillPath);
+
+      if (additive || !record) {
         return;
       }
 
@@ -169,7 +209,49 @@ export function DesignCanvas(): React.JSX.Element | null {
     [dispatch, scene.components],
   );
 
+  const handleSelect = React.useCallback(
+    (leafId: string, additive = false) => {
+      const { targetId, nextDrillPath } = resolveClickTarget(layers, leafId, drillPath);
+      selectResolved(targetId, nextDrillPath, additive);
+    },
+    [layers, drillPath, selectResolved],
+  );
+
+  const handleDrillIn = React.useCallback(
+    (anchorId: string, point: Point) => {
+      const chain = groupAncestorChain(layers, anchorId);
+
+      if (chain.length <= drillPath.length || selectedLayerId !== chain[drillPath.length]) {
+        return;
+      }
+
+      const enteringGroupId = chain[drillPath.length];
+      const nextDrillPath = [...drillPath, enteringGroupId];
+
+      if (chain.length > nextDrillPath.length) {
+        selectResolved(chain[nextDrillPath.length], nextDrillPath, false);
+        return;
+      }
+
+      const memberIds = groupLeafIds(layers, scene.components, enteringGroupId);
+      const hitLeafId = memberIds.find((id) => {
+        const record = scene.components[id];
+        return record && pointInComponent(record, measure(record), point);
+      });
+
+      if (!hitLeafId) {
+        setDrillPath(nextDrillPath);
+        return;
+      }
+
+      selectResolved(hitLeafId, nextDrillPath, false);
+    },
+    [layers, scene.components, measure, drillPath, selectedLayerId, selectResolved],
+  );
+
   const handleDeselect = React.useCallback(() => {
+    dispatch({ type: "layers.select", layerId: null });
+    setDrillPath([]);
     if (values[TARGETS.selectedKind] === "") {
       return;
     }
@@ -187,9 +269,14 @@ export function DesignCanvas(): React.JSX.Element | null {
     selectedLayerId && visibleLayerIds.includes(selectedLayerId) ? selectedLayerId : null,
     values[TARGETS.selectedKind],
   );
+  const relevantSelectedIds = (editing?.ids ?? []).filter(
+    (id) =>
+      visibleLayerIds.includes(id) ||
+      groupLeafIds(layers, scene.components, id).some((memberId) => visibleLayerIds.includes(memberId)),
+  );
 
   React.useEffect(() => {
-    if (!editingLayerId) {
+    if (!editingLayerId && !editing?.ids.length) {
       return;
     }
 
@@ -215,7 +302,7 @@ export function DesignCanvas(): React.JSX.Element | null {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [editingLayerId, handleDeselect]);
+  }, [editingLayerId, handleDeselect, editing?.ids.length]);
 
   /**
    * Deleting removes the layer and leaves its record in place, so undoing the
@@ -270,12 +357,17 @@ export function DesignCanvas(): React.JSX.Element | null {
       </div>
       <Handles
         components={scene.components}
+        drillPath={drillPath}
         layerIds={visibleLayerIds}
+        layers={layers}
         measure={measure}
         onChange={handleComponentChange}
+        onChangeMany={handleComponentsChange}
         onDelete={handleDelete}
+        onDrillIn={handleDrillIn}
         onSelect={handleSelect}
-        selectedLayerId={editingLayerId}
+        selectedLayerId={(editing?.ids.length ?? 1) > 1 ? null : editingLayerId}
+        selectedLayerIds={relevantSelectedIds}
         zoom={canvasZoom}
       />
       <Tooltip>

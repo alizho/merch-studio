@@ -13,6 +13,7 @@ export function AppHome(): React.JSX.Element {
         controlRenderers={appComposition.controlRenderers}
         exportRenderer={appComposition.exportRenderer}
         infiniteCanvasContent={appComposition.infiniteCanvasContent}
+        layerEditing={appComposition.layerEditing}
         modelPresentation={appComposition.modelPresentation}
         onPanelAction={appComposition.onPanelAction}
         renderDefaultCanvasMedia={appComposition.renderDefaultCanvasMedia}

@@ -1,3 +1,4 @@
+import { layerEditingAdapter } from "./actions/layer-editing";
 import { composeToolcraftApp } from "@/toolcraft/runtime/react";
 
 import { appSchema } from "./app-schema";
@@ -34,7 +35,7 @@ const GARMENT_SCENE = Object.freeze([
 ]);
 
 export const appComposition = composeToolcraftApp(appSchema, {
-  actions: { onPanelAction },
+  actions: { onPanelAction, layerEditing: layerEditingAdapter },
   controls: {
     renderers: {
       [garmentColorwayControlType]: GarmentColorwayControl,

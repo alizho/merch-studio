@@ -15,7 +15,7 @@ export const MIN_COMPONENT_SIZE = 32;
 export const MIN_TYPE_SIZE = 12;
 export const MAX_TYPE_SIZE = 420;
 
-export type GestureDraft =
+export type SingleGestureDraft =
   | { kind: "resize"; layerId: string; origin: ComponentRecord; start: Point }
   | { kind: "move"; layerId: string; origin: ComponentRecord; start: Point }
   | {
@@ -25,10 +25,21 @@ export type GestureDraft =
       startAngle: number;
     };
 
+/** A group-aware move: every member translates together, sharing one history entry. */
+export type GroupMoveDraft = {
+  kind: "group-move";
+  members: readonly { layerId: string; origin: ComponentRecord }[];
+  start: Point;
+};
+
+export type GestureDraft = SingleGestureDraft | GroupMoveDraft;
+
 /** Unique per gesture, so one drag collapses to exactly one history entry. */
 export type Gesture = GestureDraft & { token: number };
 
 export function gestureGroup(gesture: Gesture): string {
+  if (gesture.kind === "group-move") return `group-move:${gesture.token}`;
+
   return `${gesture.kind}:${gesture.layerId}:${gesture.token}`;
 }
 
@@ -50,7 +61,7 @@ export function resolveGestureRecord({
 }: {
   /** The component's measured box, supplied so this stays free of canvas APIs. */
   box: Box;
-  gesture: Gesture;
+  gesture: SingleGestureDraft & { token: number };
   point: Point;
   shiftKey: boolean;
 }): ComponentRecord {

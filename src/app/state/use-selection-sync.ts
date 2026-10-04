@@ -15,6 +15,7 @@
  */
 
 import * as React from "react";
+import { useToolcraftLayerEditing } from "@/toolcraft/runtime/react";
 import type {
   ToolcraftCommand,
   ToolcraftLayer,
@@ -66,6 +67,8 @@ export function useSelectionSync({
   selectedLayerId,
   values,
 }: SyncInputs): void {
+  const editingSelection = useToolcraftLayerEditing();
+  const selectionCount = editingSelection?.ids.length ?? (selectedLayerId ? 1 : 0);
   // Image layers that arrived with the saved workspace (layers and media are
   // restored before the first render), captured once.
   const restoredLayerIdsRef = React.useRef<ReadonlySet<string> | null>(null);
@@ -123,6 +126,11 @@ export function useSelectionSync({
       return;
     }
 
+    if (selectionCount > 1) {
+      lastRef.current = { layerId: null, panel: panelFromValues(values) };
+      if (values[TARGETS.selectedKind] !== "") dispatch({ type: "controls.setValue", target: TARGETS.selectedKind, value: "", history: "skip" });
+      return;
+    }
     const record = selectedLayerId ? components[selectedLayerId] : undefined;
     const panelNow = panelFromValues(values);
     const editing = isComponentKind(panelNow.kind);
@@ -243,5 +251,5 @@ export function useSelectionSync({
     if (!panelEqual(panelFromRecord(record), panelNow)) {
       hydrate(record);
     }
-  }, [dispatch, importedImages, layers, mediaAssets, selectedLayerId, values]);
+  }, [dispatch, importedImages, layers, mediaAssets, selectedLayerId, values, selectionCount]);
 }

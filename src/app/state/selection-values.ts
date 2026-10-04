@@ -226,6 +226,9 @@ export function applyPanelToRecord(
 
   return {
     ...record,
+    ...(record.parts && panel.treatment !== record.treatment ? {
+      parts: record.parts.map(part => ({ ...part, record: { ...part.record, treatment: panel.treatment } })),
+    } : {}),
     backgroundRemoval: record.kind === "image" ? panel.backgroundRemoval : false,
     effectAmount: panel.effectAmount,
     // The Pixelate/ASCII checkboxes are `disabledWhen` the other is on, so a

@@ -396,3 +396,20 @@ Protected receipts own initial/performance proof. Later edits record focused che
 - Reason: canvas interaction + schema control removal + acceptance ownership.
 - Run: browser check flip button presence and plane rotate; update e2e specs.
 - Skip: measured performance.
+
+
+### Component clipboard and layer editing
+
+- Active change: component-layer-editing
+- Change ID: component-layer-editing
+- Entry type: substantial later feature work; selection, structural history, product records, and canvas/panel integration share one operation model.
+- Request: Ctrl+C / Ctrl+V, Backspace deletion, layer/component right-click duplicate/copy/paste/delete, Shift multiselection, group and merge. User clarified merge means one editable component and explicitly authorized local runtime changes and removal of the AGENTS restriction.
+- Plan: (1) extend runtime selection and atomic layer/value/media transactions; (2) share a runtime context-menu/shortcut controller through a typed product action adapter; (3) retain merged source parts in a compound record, render using the existing Canvas2D pass, support separation to edit original parts; (4) prove unit history/media behavior and real canvas/panel keyboard, menus, reload.
+- Design: public ContextMenu composite owns popup behavior; no new dependency. Shift-click toggles membership, plain click selects one, right-click preserves an existing multi-selection. Native editors retain clipboard/delete keys. Group keeps separate layers; merge preserves authored child records and appearance in one transformable component, with Separate components to resume individual editing. Clipboard is scoped to this editor session.
+- Runtime override: local src/toolcraft edits authorized; preserve signed manifest/checker and report differences. Missing brainstorming/writing-plans skills use the signed local proportional-planning equivalent.
+- Routes read: layers, schema/actions, copy/media, renderer; Plan and Implementation docs completed. Existing renderer and cache strategy retained; merging visits the same source parts with coordinate transforms and adds no frame loop, pixel processing pass, quality change, or GPU dependency.
+- Verification tier: focused later edit (Tier 3 scope).
+- Reason: structural operations need atomic Undo/Redo, retained media, reload, and canvas/panel parity.
+- Run: pre-change ai:check; targeted unit tests for layer operations/compound geometry/history, TypeScript for new cross-runtime types, focused product browser tests and feature acceptance for component-layer-editing.
+- Skip: aggregate delivery, full test matrix and measured performance; this is later functional work.
+- Result: implementation in progress.

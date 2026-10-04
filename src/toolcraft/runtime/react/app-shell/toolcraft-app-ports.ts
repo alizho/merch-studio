@@ -1,3 +1,4 @@
+import type { ToolcraftLayerEditingAdapter } from "../layers/layer-editing";
 import type * as React from "react";
 
 import type { ToolcraftProductExportRenderer } from "../../export/product-export-renderer";
@@ -41,7 +42,7 @@ export type ToolcraftAppScenePorts = Readonly<{
 }>;
 
 export type ToolcraftAppPorts = Readonly<{
-  actions?: Readonly<{ onPanelAction?: ToolcraftPanelActionHandler }>;
+  actions?: Readonly<{ onPanelAction?: ToolcraftPanelActionHandler; layerEditing?: ToolcraftLayerEditingAdapter }>;
   controls?: Readonly<{ renderers?: ToolcraftControlRendererMap }>;
   modelPresentation?: ToolcraftAppModelPresentationPort;
   renderer?: Readonly<{
@@ -133,6 +134,7 @@ export function createToolcraftAppPortsSnapshot(
       ? {}
       : {
           actions: Object.freeze({
+            ...(ports.actions.layerEditing ? { layerEditing: ports.actions.layerEditing } : {}),
             ...(ports.actions.onPanelAction === undefined
               ? {}
               : { onPanelAction: ports.actions.onPanelAction }),

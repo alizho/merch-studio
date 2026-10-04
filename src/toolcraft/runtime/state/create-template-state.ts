@@ -225,6 +225,7 @@ export function createToolcraftState(
     },
     schema,
     selectedLayerId,
+    selectedLayerIds: initialState.selectedLayerIds,
     timeline,
     values,
   };

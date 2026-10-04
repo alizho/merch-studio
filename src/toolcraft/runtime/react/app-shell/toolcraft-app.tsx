@@ -1,3 +1,4 @@
+import { LayerEditingProvider, type ToolcraftLayerEditingAdapter } from "../layers/layer-editing";
 "use client";
 
 import * as React from "react";
@@ -45,6 +46,7 @@ export type ToolcraftAppComposition = Readonly<{
   infiniteCanvasContent?: React.ReactNode;
   modelPresentation?: ToolcraftModelPresentationMode;
   onPanelAction?: ToolcraftPanelActionHandler;
+  layerEditing?: ToolcraftLayerEditingAdapter;
   renderDefaultCanvasMedia?: boolean;
   rendererPipelineRegistration?: AnyToolcraftRendererPipelineRegistration;
   sceneBoundsProvider?: ToolcraftProductSceneBoundsProvider;
@@ -213,6 +215,7 @@ export function ToolcraftApp({
       rendererPipelineRegistration={rendererPipelineRegistration}
       schema={schema}
     >
+      <LayerEditingProvider adapter={props.layerEditing}>
       <VersionsProvider>
         <ToolcraftProductSceneBoundsBoundary boundsProvider={sceneBoundsProvider}>
           <ToolcraftAppContent
@@ -223,6 +226,7 @@ export function ToolcraftApp({
           />
         </ToolcraftProductSceneBoundsBoundary>
       </VersionsProvider>
+      </LayerEditingProvider>
     </ToolcraftRoot>
   );
 }

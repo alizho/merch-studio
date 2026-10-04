@@ -87,11 +87,12 @@ export async function ensureEmbeddedRasters(
 }
 
 export function collectRasterDataUrls(
-  components: Readonly<Record<string, { rasterDataUrl?: string }>>,
+  components: Readonly<Record<string, { rasterDataUrl?: string; parts?: { record: import("../state/components").ComponentRecord }[] }>>,
 ): string[] {
   const urls: string[] = [];
 
   for (const record of Object.values(components)) {
+    if (record.parts) urls.push(...collectRasterDataUrls(Object.fromEntries(record.parts.map((part, index) => [index, part.record]))));
     if (record.rasterDataUrl && !urls.includes(record.rasterDataUrl)) {
       urls.push(record.rasterDataUrl);
     }

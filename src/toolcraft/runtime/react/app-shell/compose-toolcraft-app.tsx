@@ -59,6 +59,7 @@ export function composeToolcraftApp(
       ? {}
       : { infiniteCanvasContent: portSnapshot.scene.infiniteCanvasContent }),
     modelPresentation: resolvedModelPresentation,
+    ...(portSnapshot.actions?.layerEditing ? { layerEditing: portSnapshot.actions.layerEditing } : {}),
     ...(portSnapshot.actions?.onPanelAction === undefined
       ? {}
       : { onPanelAction: portSnapshot.actions.onPanelAction }),

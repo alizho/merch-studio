@@ -1,3 +1,5 @@
+import { ToolcraftLayerContextMenu } from "@/toolcraft/runtime/react";
+import type { ToolcraftLayer } from "@/toolcraft/runtime";
 "use client";
 
 /**
@@ -25,6 +27,14 @@ import {
   type Gesture,
   type GestureDraft,
 } from "./gesture";
+import {
+  boundsCorners,
+  expandSelectionToMembers,
+  groupLeafIds,
+  resolveClickTarget,
+  resolveGroupMoveSnap,
+  unionBounds,
+} from "./group-selection";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "../design/tokens";
 import {
   componentLabel,
@@ -44,23 +54,36 @@ let gestureCounter = 0;
 
 export type HandlesProps = {
   components: ComponentMap;
+  drillPath?: readonly string[];
   layerIds: readonly string[];
+  layers: readonly ToolcraftLayer[];
   measure: (record: ComponentRecord) => Box;
   onChange: (layerId: string, record: ComponentRecord, gesture: string) => void;
+  onChangeMany: (
+    updates: readonly { layerId: string; record: ComponentRecord }[],
+    gesture: string,
+  ) => void;
   onDelete: (layerId: string) => void;
-  onSelect: (layerId: string) => void;
+  onDrillIn?: (leafId: string, point: Point) => void;
+  onSelect: (layerId: string, additive?: boolean) => void;
+  selectedLayerIds?: readonly string[];
   selectedLayerId: string | null;
   zoom: number;
 };
 
 export function Handles({
   components,
+  drillPath = [],
   layerIds,
+  layers,
   measure,
   onChange,
+  onChangeMany,
   onDelete,
+  onDrillIn,
   onSelect,
   selectedLayerId,
+  selectedLayerIds = [],
   zoom,
 }: HandlesProps): React.JSX.Element {
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
@@ -111,6 +134,47 @@ export function Handles({
       return;
     }
 
+    if (gesture.kind === "group-move") {
+      const point = toCanvasPoint(event.clientX, event.clientY);
+      const rawDelta = { x: point.x - gesture.start.x, y: point.y - gesture.start.y };
+      const bounds = unionBounds(gesture.members.map(member => ({ box: measure(member.origin), record: member.origin })));
+
+      if (!bounds) {
+        return;
+      }
+
+      const memberIds = gesture.members.map(member => member.layerId);
+      const snapped = resolveGroupMoveSnap({
+        bounds,
+        components,
+        delta: rawDelta,
+        layerIds,
+        measure,
+        memberIds,
+        template: gesture.members[0].origin,
+        zoom,
+      });
+
+      setSnapGuides(snapped.guides);
+
+      // Every member's next record has to land in one dispatch: computing
+      // each from the same pre-drag `scene.components` snapshot and firing
+      // them as separate `onChange` calls would let each overwrite the last.
+      onChangeMany(
+        gesture.members.map((member) => ({
+          layerId: member.layerId,
+          record: {
+            ...member.origin,
+            centerX: member.origin.centerX + snapped.delta.x,
+            centerY: member.origin.centerY + snapped.delta.y,
+          },
+        })),
+        gestureGroup(gesture),
+      );
+
+      return;
+    }
+
     const box = measure(gesture.origin);
     const proposed = resolveGestureRecord({
       box,
@@ -144,6 +208,47 @@ export function Handles({
       gestureRef.current = null;
       setSnapGuides(NO_SNAP_GUIDES);
     }
+  };
+
+  /**
+   * Shared by leaf buttons and group hit-plates: clicking within an existing
+   * multi/group selection (without Shift) preserves it so the whole mix can
+   * be dragged together, otherwise the click narrows the selection to just
+   * this entity before the drag begins.
+   */
+  const handleEntityPointerDown = (
+    event: React.PointerEvent<HTMLButtonElement>,
+    targetId: string,
+    leafIdForSelect: string,
+  ) => {
+    if (event.button !== 0) return;
+
+    const preserveSelection = !event.shiftKey && selectedLayerIds.length > 1 && selectedLayerIds.includes(targetId);
+
+    if (!preserveSelection) {
+      onSelect(leafIdForSelect, event.shiftKey);
+      if (event.shiftKey) {
+        event.stopPropagation();
+        return;
+      }
+    }
+
+    const members = expandSelectionToMembers(layers, components, preserveSelection ? selectedLayerIds : [targetId])
+      .filter(member => layerIds.includes(member.layerId));
+    const start = toCanvasPoint(event.clientX, event.clientY);
+
+    if (members.length > 1) {
+      beginGesture(event, { kind: "group-move", members, start });
+      return;
+    }
+
+    const solo = members[0];
+    beginGesture(event, {
+      kind: "move",
+      layerId: solo?.layerId ?? leafIdForSelect,
+      origin: solo?.origin ?? components[leafIdForSelect],
+      start,
+    });
   };
 
   const selectionBox = selected ? measure(selected) : null;
@@ -191,6 +296,20 @@ export function Handles({
         className={styles.frame}
         viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
       >
+        {selectedLayerIds.map(id => {
+          const members = groupLeafIds(layers, components, id).filter(memberId => layerIds.includes(memberId));
+
+          if (members.length > 1) {
+            const bounds = unionBounds(members.map(memberId => ({ box: measure(components[memberId]), record: components[memberId] })));
+            return bounds ? (
+              <polygon key={id} data-merch-group-selection={id} fill="none" stroke={SELECTION_STROKE} strokeWidth={chrome.strokeWidth} points={boundsCorners(bounds).map(p => `${p.x},${p.y}`).join(" ")} />
+            ) : null;
+          }
+
+          if (selectedLayerIds.length <= 1) return null;
+          const record = components[id];
+          return record ? <polygon key={id} data-merch-multi-selection={id} fill="none" stroke={SELECTION_STROKE} strokeWidth={chrome.strokeWidth} points={componentCorners(record, measure(record)).map(p => `${p.x},${p.y}`).join(" ")} /> : null;
+        })}
         {selected && topEdge ? (
           <g>
             <polygon
@@ -300,47 +419,80 @@ export function Handles({
       </svg>
 
       {/* Back to front, so the frontmost component receives the pointer. */}
-      {[...layerIds].reverse().map((layerId) => {
-        const record = components[layerId];
+      {(() => {
+        const emittedGroupPlates = new Set<string>();
 
-        if (!record) {
-          return null;
-        }
+        return [...layerIds].reverse().map((layerId) => {
+          const record = components[layerId];
 
-        const box = measure(record);
+          if (!record) {
+            return null;
+          }
 
-        return (
-          <div
-            className={styles.body}
-            data-merch-interactive=""
-            key={layerId}
-            style={{
-              height: box.height,
-              left: record.centerX - box.width / 2,
-              top: record.centerY - box.height / 2,
-              transform: `rotate(${record.rotation}deg)`,
-              width: box.width,
-            }}
-          >
-            <Button
-              aria-label={`Select and move ${componentLabel(record)}`}
-              className={styles.fill}
-              onPointerDown={(event) => {
-                onSelect(layerId);
-                beginGesture(event, {
-                  kind: "move",
-                  layerId,
-                  origin: record,
-                  start: toCanvasPoint(event.clientX, event.clientY),
-                });
-              }}
-              onPointerMove={continueGesture}
-              onPointerUp={endGesture}
-              variant="ghost"
-            />
-          </div>
-        );
-      })}
+          const box = measure(record);
+          const { targetId: plateGroupId } = resolveClickTarget(layers, layerId, drillPath);
+          let plate: React.ReactNode = null;
+
+          if (plateGroupId !== layerId && !emittedGroupPlates.has(plateGroupId)) {
+            emittedGroupPlates.add(plateGroupId);
+            const memberIds = groupLeafIds(layers, components, plateGroupId).filter(id => layerIds.includes(id));
+            const bounds = unionBounds(memberIds.map(id => ({ box: measure(components[id]), record: components[id] })));
+
+            if (bounds) {
+              plate = (
+                <div
+                  className={styles.body}
+                  data-merch-group-plate={plateGroupId}
+                  data-merch-interactive=""
+                  style={{
+                    height: bounds.maxY - bounds.minY,
+                    left: bounds.minX,
+                    top: bounds.minY,
+                    width: bounds.maxX - bounds.minX,
+                  }}
+                >
+                  <Button
+                    aria-label="Select group"
+                    className={styles.fill}
+                    onDoubleClick={(event) => onDrillIn?.(memberIds[0] ?? layerId, toCanvasPoint(event.clientX, event.clientY))}
+                    onPointerDown={(event) => handleEntityPointerDown(event, plateGroupId, memberIds[0] ?? layerId)}
+                    onPointerMove={continueGesture}
+                    onPointerUp={endGesture}
+                    variant="ghost"
+                  />
+                </div>
+              );
+            }
+          }
+
+          return (
+            <React.Fragment key={layerId}>
+              {plate}
+              <ToolcraftLayerContextMenu layerId={layerId}><div
+                className={styles.body}
+                data-merch-interactive=""
+                style={{
+                  height: box.height,
+                  left: record.centerX - box.width / 2,
+                  top: record.centerY - box.height / 2,
+                  transform: `rotate(${record.rotation}deg)`,
+                  width: box.width,
+                }}
+              >
+                <Button
+                  aria-label={`Select and move ${componentLabel(record)}`}
+                  className={styles.fill}
+                  onDoubleClick={(event) => onDrillIn?.(layerId, toCanvasPoint(event.clientX, event.clientY))}
+                  onPointerDown={(event) => handleEntityPointerDown(event, plateGroupId, layerId)}
+                  onPointerMove={continueGesture}
+                  onPointerUp={endGesture}
+                  variant="ghost"
+                />
+              </div></ToolcraftLayerContextMenu>
+            </React.Fragment>
+          );
+        });
+      })()}
 
       {selected && selectedLayerId
         ? resizeCorners.map((corner, index) => (

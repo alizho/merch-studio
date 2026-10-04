@@ -1,4 +1,6 @@
-import { commitToolcraftStructuralPatch } from "../../../../state/history-patches";
+import { tagToolcraftHistoryPatchDomains } from "../../../../state/history-patch-metadata";
+import { selectedLayerIds } from "./selection";
+import { commitToolcraftStatePatch, commitToolcraftStructuralPatch } from "../../../../state/history-patches";
 import type {
   ToolcraftState
 } from "../../../../state/types";
@@ -11,6 +13,24 @@ export function reduceToolcraftLayersCommand(
   command: ToolcraftLayersCommand,
 ): ToolcraftState {
   switch (command.type) {
+    case "layers.applyEdit": {
+      const ids = new Set(command.layers.map(layer => layer.id));
+      if (ids.size !== command.layers.length || command.layers.some(layer =>
+        layer.parentGroupId && (!ids.has(layer.parentGroupId) || layer.parentGroupId === layer.id)
+      )) return state;
+      const selected = [...new Set(command.selectedLayerIds)].filter(id => ids.has(id));
+      const beforeValues = Object.fromEntries(Object.keys(command.values)
+        .filter(target => target in state.values).map(target => [target, state.values[target]]));
+      const afterValues = Object.fromEntries(Object.keys(beforeValues).map(target => [target, command.values[target]]));
+      const before = { layers: state.layers, mediaAssets: state.mediaAssets,
+        selectedLayerId: state.selectedLayerId, selectedLayerIds: selectedLayerIds(state) };
+      const after = { layers: command.layers, mediaAssets: command.mediaAssets,
+        selectedLayerId: selected.at(-1) ?? null, selectedLayerIds: selected };
+      return commitToolcraftStatePatch(state, tagToolcraftHistoryPatchDomains(
+        { before, after, label: command.label },
+        { state: { before, after }, values: { before: beforeValues, after: afterValues } },
+      ));
+    }
     case "layers.add": {
       const layer = createToolcraftLayer(state, command.layer);
       const insertIndex = clampInsertIndex(
@@ -155,15 +175,17 @@ export function reduceToolcraftLayersCommand(
       });
     }
 
-    case "layers.select":
-      if (!state.layers.some((layer) => layer.id === command.layerId)) {
-        return state;
-      }
-
-      return {
-        ...state,
-        selectedLayerId: command.layerId,
-      };
+    case "layers.select": {
+      if (command.layerId === null) return { ...state, selectedLayerId: null, selectedLayerIds: [] };
+      if (!state.layers.some(layer => layer.id === command.layerId)) return state;
+      const previous = selectedLayerIds(state);
+      const ids = command.additive
+        ? previous.includes(command.layerId)
+          ? previous.filter(id => id !== command.layerId)
+          : [...previous, command.layerId]
+        : [command.layerId];
+      return { ...state, selectedLayerId: ids.at(-1) ?? null, selectedLayerIds: ids };
+    }
 
     case "layers.rename": {
       const name = command.name.trim();
@@ -257,6 +279,7 @@ export function reduceToolcraftLayersCommand(
 
 export const layersCommandHandlers = Object.freeze({
   "layers.add": reduceToolcraftLayersCommand,
+  "layers.applyEdit": reduceToolcraftLayersCommand,
   "layers.delete": reduceToolcraftLayersCommand,
   "layers.moveToGroup": reduceToolcraftLayersCommand,
   "layers.rename": reduceToolcraftLayersCommand,

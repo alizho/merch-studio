@@ -56,7 +56,7 @@ import { TARGETS } from "./state/components";
 /** Any component is selected, so selection-scoped controls apply. */
 const whenComponentSelected = {
   all: [
-    { oneOf: ["text", "mark", "image"], target: TARGETS.selectedKind },
+    { oneOf: ["text", "mark", "image", "compound"], target: TARGETS.selectedKind },
   ],
   mode: "conditional",
 } as const;

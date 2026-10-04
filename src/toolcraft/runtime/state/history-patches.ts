@@ -109,6 +109,7 @@ function applyToolcraftHistoryPatch(
   | "layers"
   | "mediaAssets"
   | "selectedLayerId"
+  | "selectedLayerIds"
   | "timeline"
   | "values"
 > {
@@ -134,6 +135,7 @@ function applyToolcraftHistoryPatch(
       "mediaAssets" in patch
         ? (patch.mediaAssets as ToolcraftState["mediaAssets"])
         : state.mediaAssets,
+    selectedLayerIds: "selectedLayerIds" in patch ? patch.selectedLayerIds as string[] : ("selectedLayerId" in patch ? undefined : state.selectedLayerIds),
     selectedLayerId:
       "selectedLayerId" in patch
         ? (patch.selectedLayerId as ToolcraftState["selectedLayerId"])
@@ -175,6 +177,7 @@ export function commitToolcraftStatePatch(
     layers: next.layers,
     mediaAssets: next.mediaAssets,
     selectedLayerId: next.selectedLayerId,
+    selectedLayerIds: next.selectedLayerIds,
     timeline: next.timeline,
     values: next.values,
   };
@@ -217,6 +220,7 @@ export function undoToolcraftHistory(state: ToolcraftState): ToolcraftState {
     layers: next.layers,
     mediaAssets: next.mediaAssets,
     selectedLayerId: next.selectedLayerId,
+    selectedLayerIds: next.selectedLayerIds,
     timeline: next.timeline,
     values: next.values,
   };
@@ -243,6 +247,7 @@ export function redoToolcraftHistory(state: ToolcraftState): ToolcraftState {
     layers: next.layers,
     mediaAssets: next.mediaAssets,
     selectedLayerId: next.selectedLayerId,
+    selectedLayerIds: next.selectedLayerIds,
     timeline: next.timeline,
     values: next.values,
   };

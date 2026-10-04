@@ -265,6 +265,22 @@ export const appProductReadiness: ToolcraftProductReadiness = {
 
 export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   {
+    id: "component.clipboard", kind: "runtime", componentType: "layers", target: "design.components",
+    automated: true, automatedTestName: "component layer edits preserve independent copies and atomic undo",
+    browser: { file: "e2e/product-layer-editing.spec.ts", testName: "browser: component clipboard shortcuts and context menus preserve native text editing", budget: "standard" },
+    evidence: "product-output", fixture: "placed text and its independent copies",
+    userAction: "Copy/paste with Ctrl or Command, delete with Backspace, and duplicate/copy/paste/delete through layer and component context menus.",
+    expectedObservable: "Copies render independent artwork; actions undo in one step and text editors retain native clipboard/delete behavior.",
+  },
+  {
+    id: "component.merge", kind: "runtime", componentType: "layers", target: "design.components",
+    automated: true, automatedTestName: "merged parts retain geometry, text and appearance through resize and separation",
+    browser: { file: "e2e/product-layer-editing.spec.ts", testName: "browser: Shift selection groups and merges editable components through reload", budget: "standard" },
+    evidence: "product-output", fixture: "two text components",
+    userAction: "Shift-select components or layer rows, group or merge through their context menu, move the merge, reload and separate to edit source text.",
+    expectedObservable: "Group nests separate layers; merge retains identical artwork as one transformable component and source text remains editable after reload and separation.",
+  },
+  {
     automated: true,
     automatedTestName:
       "resolves each garment type to its own artwork and print area",

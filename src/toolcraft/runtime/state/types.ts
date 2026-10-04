@@ -162,6 +162,7 @@ export const toolcraftRuntimeCommandTypes = [
   "layers.add",
   "layers.delete",
   "layers.moveToGroup",
+  "layers.applyEdit",
   "layers.select",
   "layers.rename",
   "layers.toggleCollapsed",
@@ -470,6 +471,7 @@ export type ToolcraftState = {
   mediaAssets: ToolcraftMediaAsset[];
   panels: ToolcraftPanelsState;
   schema: ResolvedToolcraftAppSchema;
+  selectedLayerIds?: string[];
   selectedLayerId: string | null;
   timeline: ToolcraftTimelineState;
   values: Record<string, unknown>;
@@ -486,6 +488,7 @@ export type ToolcraftInitialState = {
     timeline?: Partial<ToolcraftPanelState>;
     toolbar?: Partial<ToolcraftPanelState>;
   };
+  selectedLayerIds?: string[];
   selectedLayerId?: string | null;
   timeline?: Partial<ToolcraftTimelineState>;
   values?: Record<string, unknown>;

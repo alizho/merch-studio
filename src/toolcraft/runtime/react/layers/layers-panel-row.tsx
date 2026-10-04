@@ -1,3 +1,4 @@
+import { ToolcraftLayerContextMenu } from "./layer-editing";
 "use client";
 
 import * as React from "react";
@@ -32,7 +33,7 @@ type LayerRowProps = {
   onPointerMove: React.PointerEventHandler<HTMLElement>;
   onPointerUp: React.PointerEventHandler<HTMLElement>;
   onRename: (displayName: string) => void;
-  onSelect: () => void;
+  onSelect: (additive?: boolean) => void;
   onToggleCollapsed: () => void;
   onToggleVisibility: () => void;
 };
@@ -367,7 +368,7 @@ export function LayerRow({
   const nameEditing = useLayerNameEditing({ displayName, onRename });
 
   return (
-    <li
+    <ToolcraftLayerContextMenu layerId={layer.id}><li
       aria-label={displayName}
       aria-selected={isSelected}
       className={cn(
@@ -385,7 +386,7 @@ export function LayerRow({
       data-template-layer-kind={isGroup ? "group" : "layer"}
       data-template-layer-name={layer.id}
       data-template-layer-parent={layer.parentGroupId}
-      onClick={onSelect}
+      onClick={event => onSelect(event.shiftKey)}
       onDoubleClick={(event) => {
         event.preventDefault();
         nameEditing.startEditingName();
@@ -400,7 +401,7 @@ export function LayerRow({
         }
 
         event.preventDefault();
-        onSelect();
+        onSelect(event.shiftKey);
       }}
       onPointerCancel={onPointerCancel}
       onPointerDown={onPointerDown}
@@ -470,6 +471,6 @@ export function LayerRow({
           onToggleVisibility={onToggleVisibility}
         />
       </div>
-    </li>
+    </li></ToolcraftLayerContextMenu>
   );
 }

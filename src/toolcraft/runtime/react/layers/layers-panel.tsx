@@ -1,3 +1,4 @@
+import { useToolcraftLayerEditing } from "./layer-editing";
 "use client";
 
 import * as React from "react";
@@ -179,6 +180,7 @@ export function LayersPanel({
   panelState,
 }: LayersPanelProps): React.JSX.Element | null {
   const dispatch = useToolcraftDispatch();
+  const editing = useToolcraftLayerEditing();
   const layers = useToolcraftCommittedSelector(selectLayers);
   const mediaAssets = useToolcraftCommittedSelector(selectMediaAssets);
   const selectedLayerId = useToolcraftCommittedSelector(selectSelectedLayerId);
@@ -276,6 +278,7 @@ export function LayersPanel({
         <PanelContentSurface data-slot="layers-panel-content">
           <ul
             aria-label="Layers"
+            aria-multiselectable="true"
             className="flex min-h-0 flex-col gap-0.5 p-1"
             data-layer-list=""
             data-layer-list-dragging={dragState?.dragging ? "true" : undefined}
@@ -313,7 +316,7 @@ export function LayersPanel({
                   }
                   isGroupHighlighted={highlightedGroupId === layer.id}
                   isReorderDragging={isReorderDragging}
-                  isSelected={selectedLayerId === layer.id}
+                  isSelected={editing ? editing.ids.includes(layer.id) : selectedLayerId === layer.id}
                   isVisible={isVisible}
                   key={layer.id}
                   layer={layer}
@@ -329,7 +332,7 @@ export function LayersPanel({
                       type: "layers.rename",
                     })
                   }
-                  onSelect={() => dispatch({ layerId: layer.id, type: "layers.select" })}
+                  onSelect={additive => dispatch({ layerId: layer.id, type: "layers.select", additive })}
                   onToggleCollapsed={() =>
                     dispatch({ layerId: layer.id, type: "layers.toggleCollapsed" })
                   }

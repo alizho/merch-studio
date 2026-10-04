@@ -63,3 +63,5 @@ export {
 } from "./app-shell/use-toolcraft";
 
 export * from "./app-shell/toolcraft-defaults-authoring";
+
+export { useToolcraftLayerEditing, ToolcraftLayerContextMenu, type ToolcraftLayerEditingAdapter, type LayerEditAction } from "./layers/layer-editing";

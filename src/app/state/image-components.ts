@@ -238,6 +238,8 @@ export function reconcileImageComponents({
     if (!isImageAsset(asset) || !layerIds.has(asset.layerId)) continue;
 
     const current = components[asset.layerId];
+    // A merged component owns multiple media sources in its retained parts.
+    if (current?.kind === "compound") continue;
     const pixels = decoded.get(asset.id);
     const trusted =
       pixels && pixels.resourceRef === asset.resourceRef ? pixels : undefined;

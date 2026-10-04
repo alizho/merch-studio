@@ -50,14 +50,14 @@ function readLayers(value: unknown): ToolcraftLayer[] | undefined {
 
 export function readLayerState(
   persistedState: Record<string, unknown>,
-): Pick<ToolcraftInitialState, "layers" | "selectedLayerId"> | undefined {
+): Pick<ToolcraftInitialState, "layers" | "selectedLayerId" | "selectedLayerIds"> | undefined {
   const layers = readLayers(persistedState.layers);
 
   if (!layers) {
     return undefined;
   }
 
-  const layerState: Pick<ToolcraftInitialState, "layers" | "selectedLayerId"> = {
+  const layerState: Pick<ToolcraftInitialState, "layers" | "selectedLayerId" | "selectedLayerIds"> = {
     layers,
   };
 
@@ -70,11 +70,14 @@ export function readLayerState(
     layerState.selectedLayerId = null;
   }
 
+  if (Array.isArray(persistedState.selectedLayerIds)) {
+    layerState.selectedLayerIds = persistedState.selectedLayerIds.filter((id): id is string => typeof id === "string" && layers.some(layer => layer.id === id));
+  }
   return layerState;
 }
 
 export const layersPersistenceCodec = Object.freeze({
-  fields: ["layers", "selectedLayerId"],
+  fields: ["layers", "selectedLayerId", "selectedLayerIds"],
   read: (_schema, data) => readLayerState(data),
-  write: state => ({ layers: state.layers, selectedLayerId: state.selectedLayerId }),
+  write: state => ({ layers: state.layers, selectedLayerId: state.selectedLayerId, selectedLayerIds: state.selectedLayerIds }),
 } satisfies ToolcraftWorkspaceSliceCodec);

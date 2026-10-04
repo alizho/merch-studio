@@ -11,7 +11,7 @@ import { isComponentKind } from "../state/components";
 const CANVAS_ROOT = '[data-slot="toolcraft-runtime-canvas"]';
 const INTERACTIVE = "[data-merch-interactive]";
 const KEY_BLOCKERS =
-  '[role="listbox"], [role="menu"], [role="option"], [role="combobox"], [role="dialog"]';
+  'input, textarea, select, [contenteditable="true"], [role="textbox"], [role="listbox"], [role="menu"], [role="option"], [role="combobox"], [role="dialog"]';
 
 export function visibleSelectedLayerId(
   selectedLayerId: string | null,

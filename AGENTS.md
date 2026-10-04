@@ -47,7 +47,7 @@ Export request provenance follows `docs/toolcraft/core/setup-export.md#primary-r
 
 ## Design System Fit
 
-Inspect built-in schema controls and the public `@/toolcraft/ui` barrel before authoring product UI. Check complete public controls and composites before public primitives. Use the order reuse → extend → compose: reuse a semantic fit, extend the canonical monorepo owner and regenerate when a generally reusable capability is missing, or compose a product-specific interaction from public primitives. A local visual preference is insufficient reason to bypass a public owner. Never import private paths below `src/toolcraft/ui/components/**`, and do not hand-style standard controls, states, borders, radii, or spacing.
+Inspect built-in schema controls and the public `@/toolcraft/ui` barrel before authoring product UI. Check complete public controls and composites before public primitives. Use the order reuse → extend → compose: reuse a semantic fit, extend the canonical monorepo owner and regenerate when a generally reusable capability is missing, or compose a product-specific interaction from public primitives. A local visual preference is insufficient reason to bypass a public owner. User-authorized runtime changes may extend the public owner locally. Never import private paths below `src/toolcraft/ui/components/**`, and do not hand-style standard controls, states, borders, radii, or spacing.
 
 ## Starter Baseline
 
@@ -90,7 +90,7 @@ Use this `AGENTS.md` as the entry contract. Use local docs for detail; the app m
 - Use `e2e/app-kernel-benchmarks.ts` only for executable candidates required by `assessToolcraftRenderPlan`, then run protected `npm run verify:kernel`. Do not put authored timing evidence in product files.
 - Do not paste, restore, or duplicate runtime validators inside `src/app/app-performance.ts`.
 - Do not edit the generated contract files under `docs/toolcraft` or the generated `LICENSE.md` and `NOTICE.md`; they are framework-owned and covered by the signed integrity manifest. `docs/toolcraft/agent-worklog.md` is the explicit editable exception for product decisions and verification evidence.
-- Do not edit `src/toolcraft`. It is an immutable signed copy of the shared Toolcraft runtime; change the monorepo runtime and regenerate the app instead.
+- Local runtime edits in `src/toolcraft` are permitted by the user. Keep changes focused and tested; report signed-integrity differences without rewriting the integrity manifest.
 - Before first product delivery, replace the starter worklog with `Mode: product`, add one `Decision Trail` entry per coherent user-visible delivery batch, and record concrete product decisions under `docs/toolcraft/workflow.md`. Later small edits need only a compact entry with the request, changed owner, result and focused checks; do not rewrite unchanged product decisions or invent alternatives. Protected receipts own first-delivery/performance plans and proof. `npm run test` fails if the worklog is missing, lacks the decision trail, or still describes the neutral starter.
 - `npm run test` includes Toolcraft source integrity and local docs checks. If a desired control style is missing, fix the schema or regenerate from the upstream template/runtime; do not patch copied `src/toolcraft` files for one app.
 
@@ -243,3 +243,7 @@ Framework capability changes follow `docs/toolcraft/module-authoring.md`: implem
 Development attachments, diagnostics and cleanup follow `docs/toolcraft/core/development-files.md`. Put agent diagnostics in `.toolcraft/browser-artifacts/` and temporary inputs in `.toolcraft/scratch/`; use `files:check` after adding working files and `files:clean` for an explicit cleanup preview. Never treat all `.toolcraft` contents as disposable.
 
 Text-only change and run history follows `docs/toolcraft/workflow.md#text-journal`. Use `journal` for change IDs and command history; `test:feature` records attempts automatically. Bind runs with `TOOLCRAFT_CHANGE_ID` and retries with `TOOLCRAFT_RETRY_OF`. Journal text never grants performance authority.
+
+## User-authorized local runtime work
+
+The user explicitly permits bypassing the upstream-only runtime restriction for component clipboard shortcuts, deletion, layer context menus, Shift multiselection, grouping, and editable merging. Implement these directly in this app, including the runtime owners. This permission takes precedence over conflicting upstream-only instructions in the generated documents. Preserve the integrity checker and report expected differences honestly.

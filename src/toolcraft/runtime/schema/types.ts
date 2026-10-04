@@ -137,6 +137,7 @@ export type ToolcraftAssemblyCommand =
   | "layers.add"
   | "layers.delete"
   | "layers.moveToGroup"
+  | "layers.applyEdit"
   | "layers.rename"
   | "layers.reorder"
   | "layers.select"

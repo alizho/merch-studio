@@ -51,6 +51,7 @@ export function mergeToolcraftInitialState(
 
     if (Object.hasOwn(state, "selectedLayerId")) {
       merged.selectedLayerId = state.selectedLayerId;
+      merged.selectedLayerIds = state.selectedLayerIds;
     }
   }
 

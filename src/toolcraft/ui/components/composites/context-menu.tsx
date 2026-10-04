@@ -6,6 +6,11 @@ import { cn } from "../../lib/utils";
 import {
   PrimitiveArrowIcon,
 } from "../primitives";
+import {
+  PortalLayerContainerProvider,
+  type PortalLayerContainer,
+  usePortalLayerContainer,
+} from "../primitives/portal-layer-context";
 import { CheckIcon } from "@phosphor-icons/react";
 
 function ContextMenu({ ...props }: ContextMenuPrimitive.Root.Props) {
@@ -30,29 +35,36 @@ function ContextMenuContent({
   className,
   align = "start",
   alignOffset = 4,
+  portalContainer,
   side = "right",
   sideOffset = 0,
   ...props
 }: ContextMenuPrimitive.Popup.Props &
-  Pick<ContextMenuPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset">) {
+  Pick<ContextMenuPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset"> & {
+    portalContainer?: PortalLayerContainer;
+  }) {
+  const resolvedContainer = usePortalLayerContainer(portalContainer);
+  const portalNodeRef = React.useRef<HTMLDivElement | null>(null);
   return (
-    <ContextMenuPrimitive.Portal>
-      <ContextMenuPrimitive.Positioner
-        className="isolate z-50 outline-none"
-        align={align}
-        alignOffset={alignOffset}
-        side={side}
-        sideOffset={sideOffset}
-      >
-        <ContextMenuPrimitive.Popup
-          data-slot="context-menu-content"
-          className={cn(
-            "floating-popup-surface z-50 max-h-(--available-height) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border p-1 popup-text-xs-plus text-[color:var(--popover-foreground)] duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-            className,
-          )}
-          {...props}
-        />
-      </ContextMenuPrimitive.Positioner>
+    <ContextMenuPrimitive.Portal container={resolvedContainer} ref={portalNodeRef}>
+      <PortalLayerContainerProvider container={portalNodeRef}>
+        <ContextMenuPrimitive.Positioner
+          className="isolate z-50 outline-none"
+          align={align}
+          alignOffset={alignOffset}
+          side={side}
+          sideOffset={sideOffset}
+        >
+          <ContextMenuPrimitive.Popup
+            data-slot="context-menu-content"
+            className={cn(
+              "floating-popup-surface z-50 max-h-(--available-height) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border p-1 popup-text-xs-plus text-[color:var(--popover-foreground)] duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+              className,
+            )}
+            {...props}
+          />
+        </ContextMenuPrimitive.Positioner>
+      </PortalLayerContainerProvider>
     </ContextMenuPrimitive.Portal>
   );
 }
@@ -96,7 +108,7 @@ function ContextMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/context-menu-item relative flex min-h-7 cursor-pointer items-center gap-2 rounded-md px-2 py-1 popup-text-xs-plus leading-normal tracking-tight font-medium outline-hidden select-none hover:bg-[color:color-mix(in_oklab,var(--foreground)_5%,transparent)] focus:bg-[color:color-mix(in_oklab,var(--foreground)_5%,transparent)] focus:text-[color:var(--accent-foreground)] not-data-[variant=destructive]:focus:**:text-[color:var(--accent-foreground)] data-inset:pl-7.5 data-[variant=destructive]:text-[color:var(--destructive)] data-[variant=destructive]:hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] data-[variant=destructive]:focus:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] data-[variant=destructive]:focus:text-[color:var(--destructive)] data-[variant=destructive]:[&_[data-slot=context-menu-shortcut]]:text-[color:var(--destructive)] data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-[variant=destructive]:*:[svg]:text-[color:var(--destructive)]",
+        "group/context-menu-item relative flex min-h-7 cursor-pointer items-center gap-2 rounded-md px-2 py-1 popup-text-xs-plus leading-normal tracking-tight font-medium outline-hidden select-none hover:bg-[color:color-mix(in_oklab,var(--foreground)_5%,transparent)] focus:bg-[color:color-mix(in_oklab,var(--foreground)_5%,transparent)] focus:text-[color:var(--popover-foreground)] not-data-[variant=destructive]:focus:**:text-[color:var(--popover-foreground)] data-inset:pl-7.5 data-[variant=destructive]:text-[color:var(--destructive)] data-[variant=destructive]:hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] data-[variant=destructive]:focus:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] data-[variant=destructive]:focus:text-[color:var(--destructive)] data-[variant=destructive]:[&_[data-slot=context-menu-shortcut]]:text-[color:var(--destructive)] data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-[variant=destructive]:*:[svg]:text-[color:var(--destructive)]",
         className,
       )}
       {...props}

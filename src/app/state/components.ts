@@ -78,13 +78,19 @@ export const TARGETS = {
   treatment: "treatment",
 } as const;
 
-export type ComponentKind = "image" | "mark" | "text";
+export type ComponentKind = "image" | "mark" | "text" | "compound";
 
 export function isComponentKind(value: unknown): value is ComponentKind {
-  return value === "image" || value === "mark" || value === "text";
+  return value === "image" || value === "mark" || value === "text" || value === "compound";
 }
 
+export type ComponentPart = { name: string; visible: boolean; record: ComponentRecord };
+
 export type ComponentRecord = {
+  /** Editable source parts in a centered local frame; never flattened pixels. */
+  parts?: ComponentPart[];
+  sourceWidth?: number;
+  sourceHeight?: number;
   /** Owning garment face; legacy records without a side belong to the front. */
   view?: GarmentView;
   /** Removes a flat, edge-connected backdrop from imported artwork. */
@@ -203,14 +209,23 @@ function readTypography(value: unknown): Typography {
 export function readComponentRecord(
   value: unknown,
   fallbackTreatment: Treatment = "print",
+  depth = 0,
 ): ComponentRecord | null {
   if (!isRecordLike(value)) {
     return null;
   }
 
   const kind = readKind(value.kind);
+  if (depth > 16) return null;
+  const parts = kind === "compound" && Array.isArray(value.parts)
+    ? value.parts.flatMap(part => {
+        if (!isRecordLike(part)) return [];
+        const record = readComponentRecord(part.record, fallbackTreatment, depth + 1);
+        return record ? [{ name: typeof part.name === "string" ? part.name : "Component", visible: part.visible !== false, record }] : [];
+      }) : undefined;
 
   return {
+    ...(parts ? { parts, sourceWidth: Math.max(1, readNumber(value.sourceWidth, 1)), sourceHeight: Math.max(1, readNumber(value.sourceHeight, 1)) } : {}),
     view: resolveGarmentView(value.view),
     backgroundRemoval: kind === "image" && value.backgroundRemoval === true,
     centerX: readNumber(value.centerX, 0),
@@ -330,6 +345,7 @@ export function withComponent(
 }
 
 export function componentLabel(record: ComponentRecord): string {
+  if (record.kind === "compound") return "Merged component";
   if (record.kind === "text") {
     const text = (record.text ?? "").trim();
 
